@@ -299,32 +299,53 @@ export default function ActiveWorkoutScreen() {
             {activeWorkout.exercises.map((exercise, eIdx) => {
               const allSetsComplete = exercise.sets.every((s) => s.completed);
               const exInfo = findExerciseById(exercise.exerciseId, customExercises);
+              const isCustom = exInfo && 'isCustom' in exInfo && exInfo.isCustom;
               return (
-                <View key={`${exercise.exerciseId}-${eIdx}`} style={styles.exerciseSection}>
-                  {/* Exercise image */}
+                <View
+                  key={`${exercise.exerciseId}-${eIdx}`}
+                  style={[
+                    styles.exerciseSection,
+                    allSetsComplete && styles.exerciseSectionDone,
+                  ]}
+                >
+                  {/* Exercise image — larger for better visibility */}
                   {exInfo?.image && (
                     <ExerciseImage
                       uri={exInfo.image}
                       width={SCREEN_W - Spacing.lg * 2}
-                      height={160}
+                      height={180}
                       borderRadius={0}
                       style={styles.exerciseSectionImage}
                     />
                   )}
+                  {/* Custom badge overlaid on image */}
+                  {isCustom ? (
+                    <View style={styles.customBadgeOverlay}>
+                      <Text style={styles.customBadgeText}>✨ Custom</Text>
+                    </View>
+                  ) : null}
                   {/* Exercise header */}
                   <View style={styles.exerciseHeader}>
                     <View style={styles.exerciseHeaderLeft}>
-                      {allSetsComplete && (
+                      {allSetsComplete ? (
                         <Ionicons
                           name="checkmark-circle"
                           size={18}
                           color={Colors.accent}
                           style={{ marginRight: Spacing.sm }}
                         />
-                      )}
-                      <Text variant="h4" style={{ flex: 1 }}>
-                        {exercise.exerciseName}
-                      </Text>
+                      ) : null}
+                      <View style={{ flex: 1 }}>
+                        <Text variant="h4" style={{ flex: 1 }}>
+                          {exercise.exerciseName}
+                        </Text>
+                        {exInfo?.description ? (
+                          <Text color="muted" style={{ fontSize: FontSize.xs, marginTop: 2 }} numberOfLines={1}>
+                            {exInfo.description}
+                          </Text>
+                        ) : null}
+
+                      </View>
                     </View>
                     <TouchableOpacity onPress={() => addSet(eIdx)}>
                       <Text color="accent" style={{ fontSize: FontSize.sm }}>
@@ -436,8 +457,27 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     overflow: 'hidden',
   },
+  exerciseSectionDone: {
+    borderColor: Colors.accentGlow,
+  },
   exerciseSectionImage: {
     width: '100%',
+  },
+  customBadgeOverlay: {
+    position: 'absolute',
+    top: Spacing.sm,
+    right: Spacing.sm,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: Colors.accent,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 3,
+  },
+  customBadgeText: {
+    color: Colors.accent,
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semibold,
   },
   exerciseHeader: {
     flexDirection: 'row',

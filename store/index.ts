@@ -10,6 +10,17 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { CustomExercise } from '@/lib/exercises';
 
+// ─── Draft exercise (unsaved form state) ─────────────────────────────────────
+export interface CustomExerciseDraft {
+  name: string;
+  muscleGroup: string;
+  equipment: string;
+  difficulty: string;
+  description?: string;
+  imageUrl?: string;
+  savedAt: string;
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface SetLog {
@@ -126,6 +137,12 @@ interface SmartGymState {
   // Measures
   measures: BodyMeasure[];
 
+  // Favorites (exercise IDs — both default + custom)
+  favoriteExerciseIds: string[];
+
+  // Draft custom exercise (unsaved form)
+  customExerciseDraft: CustomExerciseDraft | null;
+
   // ─── Actions ─────────────────────────────────────────────────────────
 
   // Settings
@@ -146,6 +163,15 @@ interface SmartGymState {
   addCustomExercise: (exercise: CustomExercise) => void;
   updateCustomExercise: (id: string, updates: Partial<CustomExercise>) => void;
   deleteCustomExercise: (id: string) => void;
+  duplicateCustomExercise: (id: string) => void;
+
+  // Favorites
+  toggleFavoriteExercise: (exerciseId: string) => void;
+  isFavorite: (exerciseId: string) => boolean;
+
+  // Draft
+  saveCustomExerciseDraft: (draft: CustomExerciseDraft) => void;
+  clearCustomExerciseDraft: () => void;
 
   // Workout
   startWorkout: (routine: Routine | { name: string; exercises: ExerciseLog[] }) => void;
@@ -219,6 +245,8 @@ export const useStore = create<SmartGymState>()(
       activeWorkout: null,
       sessions: [],
       measures: [],
+      favoriteExerciseIds: [],
+      customExerciseDraft: null,
 
       // ── Settings ──
       updateSettings: (updates) =>
@@ -300,6 +328,44 @@ export const useStore = create<SmartGymState>()(
       deleteCustomExercise: (id) =>
         set((state) => {
           state.customExercises = state.customExercises.filter((e) => e.id !== id);
+          state.favoriteExerciseIds = state.favoriteExerciseIds.filter((fid) => fid !== id);
+        }),
+
+      duplicateCustomExercise: (id) =>
+        set((state) => {
+          const original = state.customExercises.find((e) => e.id === id);
+          if (original) {
+            const newId = `${original.id}_copy_${Date.now().toString(36)}`;
+            state.customExercises.push({
+              ...original,
+              id: newId,
+              name: `${original.name} (Copy)`,
+              createdAt: new Date().toISOString(),
+            });
+          }
+        }),
+
+      toggleFavoriteExercise: (exerciseId) =>
+        set((state) => {
+          const idx = state.favoriteExerciseIds.indexOf(exerciseId);
+          if (idx === -1) {
+            state.favoriteExerciseIds.push(exerciseId);
+          } else {
+            state.favoriteExerciseIds.splice(idx, 1);
+          }
+        }),
+
+      isFavorite: (exerciseId) =>
+        get().favoriteExerciseIds.includes(exerciseId),
+
+      saveCustomExerciseDraft: (draft) =>
+        set((state) => {
+          state.customExerciseDraft = draft;
+        }),
+
+      clearCustomExerciseDraft: () =>
+        set((state) => {
+          state.customExerciseDraft = null;
         }),
 
       // ── Workout ──
@@ -462,9 +528,9 @@ export const useStore = create<SmartGymState>()(
         }),
     })),
     {
-      name: 'smartgym-store-v1', // AsyncStorage key
+      name: 'smartgym-store-v1',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 2,
+      version: 3,
 
       /**
        * Only persist data that should survive app restarts.
@@ -477,6 +543,8 @@ export const useStore = create<SmartGymState>()(
         measures: state.measures,
         settings: state.settings,
         isFirstLaunch: state.isFirstLaunch,
+        favoriteExerciseIds: state.favoriteExerciseIds,
+        customExerciseDraft: state.customExerciseDraft,
       }),
 
       /**
@@ -486,8 +554,11 @@ export const useStore = create<SmartGymState>()(
       migrate: (persistedState: unknown, fromVersion: number) => {
         const s = persistedState as Partial<SmartGymState>;
         if (fromVersion < 2) {
-          // v1 → v2: add customExercises array if missing
           if (!s.customExercises) s.customExercises = [];
+        }
+        if (fromVersion < 3) {
+          if (!s.favoriteExerciseIds) s.favoriteExerciseIds = [];
+          if (s.customExerciseDraft === undefined) s.customExerciseDraft = null;
         }
         return s as SmartGymState;
       },
@@ -511,3 +582,5 @@ export const selectTour = (s: SmartGymState) => ({
   isTourVisible: s.isTourVisible,
   tourStep: s.tourStep,
 });
+export const selectFavoriteIds = (s: SmartGymState) => s.favoriteExerciseIds;
+export const selectCustomExerciseDraft = (s: SmartGymState) => s.customExerciseDraft;

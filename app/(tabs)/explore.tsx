@@ -1,6 +1,6 @@
 /**
- * Explore Tab — Discover workouts, AI trainer, exercise library
- * "Save to Routines" properly converts Featured Programs into persisted Routines.
+ * Explore Tab — v2.0
+ * Global exercise search, My Exercises quick-access, discover workouts.
  */
 
 import React, { useState, useRef } from 'react';
@@ -16,7 +16,9 @@ import { Text } from '@/components/ui/Text';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { useStore } from '@/store';
+import { GlobalExerciseSearch } from '@/components/exercise/GlobalExerciseSearch';
+import { ExerciseImage } from '@/components/exercise/ExerciseImage';
+import { useStore, selectCustomExercises } from '@/store';
 import type { Routine, RoutineExercise } from '@/store';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -282,10 +284,11 @@ const CategoryChip: React.FC<{
 export default function ExploreScreen() {
   const addRoutine = useStore((s) => s.addRoutine);
   const startWorkout = useStore((s) => s.startWorkout);
+  const customExercises = useStore(selectCustomExercises);
   const { show: showToast, ToastComponent } = useToast();
 
-  // Track which program IDs have been saved (session-local; persists via store)
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const [searchVisible, setSearchVisible] = useState(false);
 
   const handleSaveToRoutines = (program: typeof FEATURED_PROGRAMS[0]) => {
     const routine = programToRoutine(program);
@@ -332,6 +335,12 @@ export default function ExploreScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Global search modal */}
+      <GlobalExerciseSearch
+        visible={searchVisible}
+        onClose={() => setSearchVisible(false)}
+      />
+
       {/* Header */}
       <View style={styles.header}>
         <View>
@@ -339,10 +348,10 @@ export default function ExploreScreen() {
           <Text color="secondary" style={{ marginTop: 2 }}>Discover workouts & exercises</Text>
         </View>
         <TouchableOpacity
-          style={styles.searchBtn}
-          onPress={() => router.push('/workout/all-exercises')}
+          style={[styles.searchBtn, styles.searchBtnGlow]}
+          onPress={() => setSearchVisible(true)}
         >
-          <Ionicons name="search" size={20} color={Colors.textSecondary} />
+          <Ionicons name="search" size={20} color={Colors.accent} />
         </TouchableOpacity>
       </View>
 
@@ -373,6 +382,103 @@ export default function ExploreScreen() {
             </View>
           </View>
         </Card>
+
+        {/* Global Exercise Search Bar */}
+        <TouchableOpacity
+          style={styles.globalSearchBar}
+          onPress={() => setSearchVisible(true)}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="search" size={16} color={Colors.textMuted} />
+          <Text color="muted" style={{ flex: 1, fontSize: FontSize.md }}>
+            Search all exercises...
+          </Text>
+          <View style={styles.globalSearchBadge}>
+            <Text style={{ color: Colors.accent, fontSize: FontSize.xs, fontWeight: FontWeight.bold }}>
+              {40 + customExercises.length}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* My Custom Exercises section */}
+        {customExercises.length > 0 && (
+          <View>
+            <View style={styles.sectionHeader}>
+              <Text variant="h4">My Custom Exercises</Text>
+              <TouchableOpacity onPress={() => router.push('/routine/add-custom-exercise')}>
+                <Text color="accent" style={{ fontSize: FontSize.sm }}>+ Create new</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalScroll}
+            >
+              {customExercises.slice(0, 8).map((ex) => (
+                <TouchableOpacity
+                  key={ex.id}
+                  style={styles.customExCard}
+                  activeOpacity={0.85}
+                  onPress={() => setSearchVisible(true)}
+                >
+                  <ExerciseImage uri={ex.image} width={120} height={80} borderRadius={Radius.md} />
+                  <View style={styles.customExInfo}>
+                    <Text semibold style={{ fontSize: FontSize.sm }} numberOfLines={1}>
+                      {ex.name}
+                    </Text>
+                    <Text color="muted" style={{ fontSize: FontSize.xs, textTransform: 'capitalize' }}>
+                      {ex.muscleGroup.replace(/_/g, ' ')}
+                    </Text>
+                    <View style={styles.customExBadge}>
+                      <Text style={{ color: Colors.accent, fontSize: 10, fontWeight: FontWeight.bold }}>✨ Custom</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+              {customExercises.length > 8 && (
+                <TouchableOpacity
+                  style={styles.customExMore}
+                  onPress={() => setSearchVisible(true)}
+                >
+                  <Text color="accent" style={{ fontWeight: FontWeight.bold }}>
+                    +{customExercises.length - 8} more
+                  </Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={styles.customExCreate}
+                onPress={() => router.push('/routine/add-custom-exercise')}
+              >
+                <Ionicons name="add-circle" size={28} color={Colors.accent} />
+                <Text color="accent" style={{ fontSize: FontSize.xs, marginTop: 4, textAlign: 'center' }}>
+                  Create
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Create custom exercise CTA (when none exist) */}
+        {customExercises.length === 0 && (
+          <TouchableOpacity
+            style={styles.createCustomCta}
+            onPress={() => router.push('/routine/add-custom-exercise')}
+            activeOpacity={0.85}
+          >
+            <View style={styles.createCustomLeft}>
+              <Text style={{ fontSize: 32 }}>🏗️</Text>
+              <View style={{ flex: 1, marginLeft: Spacing.md }}>
+                <Text semibold style={{ fontSize: FontSize.md }}>
+                  Create Your First Exercise
+                </Text>
+                <Text color="secondary" style={{ fontSize: FontSize.sm, marginTop: 2 }}>
+                  Build custom exercises with images, instructions, and personal notes.
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={Colors.accent} />
+          </TouchableOpacity>
+        )}
 
         {/* Featured Programs */}
         <View style={styles.sectionHeader}>
@@ -532,6 +638,85 @@ const styles = StyleSheet.create({
     width: 48, height: 48, borderRadius: Radius.md,
     alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.xs,
   },
+  searchBtnGlow: {
+    borderColor: Colors.accentGlow,
+    backgroundColor: Colors.accentGlow2,
+  },
+  globalSearchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.bgCard,
+    borderRadius: Radius.md,
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.lg,
+    paddingHorizontal: Spacing.md,
+    height: 48,
+    borderWidth: 1,
+    borderColor: Colors.accentGlow,
+    gap: Spacing.sm,
+  },
+  globalSearchBadge: {
+    backgroundColor: Colors.accentGlow2,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: Colors.accentGlow,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+  },
+  customExCard: {
+    width: 130,
+    backgroundColor: Colors.bgCard,
+    borderRadius: Radius.lg,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginRight: Spacing.md,
+    ...Shadow.card,
+  },
+  customExInfo: { padding: Spacing.sm },
+  customExBadge: {
+    backgroundColor: Colors.accentGlow2,
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.xs,
+    paddingVertical: 2,
+    alignSelf: 'flex-start',
+    marginTop: 3,
+  },
+  customExMore: {
+    width: 80,
+    height: 130,
+    backgroundColor: Colors.bgCard,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.md,
+  },
+  customExCreate: {
+    width: 80,
+    height: 130,
+    backgroundColor: Colors.accentGlow2,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.accentGlow,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.md,
+  },
+  createCustomCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.bgCard,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.accentGlow,
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.xl,
+    padding: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  createCustomLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   trainerCard: { marginHorizontal: Spacing.lg, marginBottom: Spacing.xl },
   trainerInner: { flexDirection: 'row', alignItems: 'flex-start' },
   toast: {

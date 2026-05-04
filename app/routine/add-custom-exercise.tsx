@@ -1,10 +1,11 @@
 /**
- * Add / Edit Custom Exercise Screen
- * Full-screen form for creating or editing custom exercises.
- * Accessed via: /routine/add-custom-exercise?editId=<id>
+ * Add / Edit Custom Exercise — v2.0
+ * react-hook-form + Zod validation, image picker (camera / gallery / URL),
+ * local image persistence, personal notes, live preview card, draft saving,
+ * unsaved-changes guard.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   ScrollView,
@@ -13,17 +14,31 @@ import {
   StyleSheet,
   Alert,
   Dimensions,
+  ActivityIndicator,
+  BackHandler,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import { useForm, Controller, useFieldArray } from 'react-hook-form';
+import { z } from 'zod';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  FadeIn,
+} from 'react-native-reanimated';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { Button } from '@/components/ui/Button';
 import { ExerciseImage } from '@/components/exercise/ExerciseImage';
-import { useStore, selectCustomExercises } from '@/store';
+import { useStore, selectCustomExercises, selectCustomExerciseDraft } from '@/store';
 import {
   MUSCLE_GROUPS,
+  EQUIPMENT_LABELS,
   type MuscleGroup,
   type Equipment,
   type CustomExercise,
@@ -31,85 +46,409 @@ import {
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
-const EQUIPMENT_OPTIONS: { id: Equipment; label: string; icon: string }[] = [
-  { id: 'barbell', label: 'Barbell', icon: '🏋️' },
-  { id: 'dumbbell', label: 'Dumbbell', icon: '🔵' },
-  { id: 'machine', label: 'Machine', icon: '⚙️' },
-  { id: 'cable', label: 'Cable', icon: '🔗' },
-  { id: 'bodyweight', label: 'Bodyweight', icon: '🤸' },
-  { id: 'kettlebell', label: 'Kettlebell', icon: '⚫' },
-  { id: 'resistance_band', label: 'Band', icon: '🔴' },
-  { id: 'smith_machine', label: 'Smith', icon: '🔩' },
-];
+// ─── Zod Schema ───────────────────────────────────────────────────────────────
 
-const DIFFICULTY_OPTIONS = ['beginner', 'intermediate', 'advanced'] as const;
+const EQUIPMENT_OPTIONS = Object.keys(EQUIPMENT_LABELS) as Equipment[];
 
-type Difficulty = (typeof DIFFICULTY_OPTIONS)[number];
+const schema = z.object({
+  name: z
+    .string()
+    .min(2, 'Name must be at least 2 characters')
+    .max(60, 'Name is too long'),
+  muscleGroup: z.string().min(1, 'Select a primary muscle group'),
+  secondaryMuscles: z.array(z.string()),
+  equipment: z.string().min(1, 'Select equipment'),
+  otherEquipment: z.string().optional(),
+  difficulty: z.enum(['beginner', 'intermediate', 'advanced']),
+  imageUrl: z.string().optional(),
+  gifUrl: z.string().optional(),
+  description: z.string().max(500, 'Description is too long').optional(),
+  instructions: z.array(z.object({ value: z.string() })),
+  notes: z.string().max(400, 'Notes are too long').optional(),
+});
 
-// ─── Field label ──────────────────────────────────────────────────────────────
-const FieldLabel: React.FC<{ label: string; required?: boolean }> = ({ label, required }) => (
-  <Text color="secondary" style={styles.fieldLabel}>
-    {label}
-    {required && <Text color="error"> *</Text>}
-  </Text>
+type FormData = z.infer<typeof schema>;
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+const FieldLabel: React.FC<{ label: string; required?: boolean; hint?: string }> = ({
+  label,
+  required,
+  hint,
+}) => (
+  <View style={{ marginBottom: Spacing.sm }}>
+    <Text color="secondary" style={styles.fieldLabel}>
+      {label}
+      {required && <Text color="error"> *</Text>}
+    </Text>
+    {hint && (
+      <Text color="muted" style={{ fontSize: FontSize.xs, marginTop: 2 }}>
+        {hint}
+      </Text>
+    )}
+  </View>
 );
 
-// ─── Section card ─────────────────────────────────────────────────────────────
-const SectionCard: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <View style={styles.sectionCard}>{children}</View>
+const SectionCard: React.FC<{
+  children: React.ReactNode;
+  title?: string;
+  glowing?: boolean;
+}> = ({ children, title, glowing }) => (
+  <View style={[styles.sectionCard, glowing && styles.sectionCardGlow]}>
+    {title && (
+      <Text
+        style={{
+          fontSize: FontSize.xs,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.2,
+          color: glowing ? Colors.accent : Colors.textMuted,
+          marginBottom: Spacing.md,
+          textTransform: 'uppercase',
+        }}
+      >
+        {title}
+      </Text>
+    )}
+    {children}
+  </View>
 );
+
+// ─── Image Picker Section ─────────────────────────────────────────────────────
+
+const ImagePickerSection: React.FC<{
+  imageUrl: string;
+  imageIsLocal: boolean;
+  onUrlChange: (url: string, isLocal: boolean) => void;
+  error?: string;
+}> = ({ imageUrl, imageIsLocal, onUrlChange, error }) => {
+  const [urlInput, setUrlInput] = useState(imageUrl && !imageIsLocal ? imageUrl : '');
+  const [loading, setLoading] = useState(false);
+
+  const saveLocally = async (uri: string): Promise<string> => {
+    const dir = FileSystem.documentDirectory + 'custom_exercise_images/';
+    await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+    const filename = `exercise_${Date.now()}.jpg`;
+    const dest = dir + filename;
+    await FileSystem.copyAsync({ from: uri, to: dest });
+    return dest;
+  };
+
+  const pickFromLibrary = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Please allow access to your photo library.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.85,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setLoading(true);
+      try {
+        const localUri = await saveLocally(result.assets[0].uri);
+        onUrlChange(localUri, true);
+      } catch {
+        Alert.alert('Error', 'Failed to save image. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const takePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Please allow camera access.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.85,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setLoading(true);
+      try {
+        const localUri = await saveLocally(result.assets[0].uri);
+        onUrlChange(localUri, true);
+      } catch {
+        Alert.alert('Error', 'Failed to save image. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const applyUrl = () => {
+    if (urlInput.trim()) {
+      onUrlChange(urlInput.trim(), false);
+    }
+  };
+
+  return (
+    <SectionCard title="Exercise Image">
+      {/* Pick buttons */}
+      <View style={styles.imagePickRow}>
+        <TouchableOpacity style={styles.imagePickBtn} onPress={takePhoto}>
+          <Ionicons name="camera" size={20} color={Colors.accent} />
+          <Text color="accent" style={{ fontSize: FontSize.sm, marginTop: 4 }}>Camera</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.imagePickBtn} onPress={pickFromLibrary}>
+          <Ionicons name="images" size={20} color={Colors.accent} />
+          <Text color="accent" style={{ fontSize: FontSize.sm, marginTop: 4 }}>Gallery</Text>
+        </TouchableOpacity>
+        <View style={styles.imagePickOrDivider}>
+          <View style={styles.imagePickDividerLine} />
+          <Text color="muted" style={{ fontSize: FontSize.xs, marginHorizontal: Spacing.sm }}>OR</Text>
+          <View style={styles.imagePickDividerLine} />
+        </View>
+        <View style={styles.urlInputWrap}>
+          <TextInput
+            style={[styles.urlInput, error ? styles.inputError : null]}
+            placeholder="Paste image URL..."
+            placeholderTextColor={Colors.textMuted}
+            value={urlInput}
+            onChangeText={setUrlInput}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+            returnKeyType="done"
+            onSubmitEditing={applyUrl}
+          />
+          <TouchableOpacity style={styles.applyBtn} onPress={applyUrl}>
+            <Text style={styles.applyBtnText}>Apply</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {error && <Text color="error" style={styles.errorText}>{error}</Text>}
+
+      {/* Preview */}
+      {loading && (
+        <View style={styles.imagePlaceholder}>
+          <ActivityIndicator color={Colors.accent} />
+          <Text color="muted" style={{ fontSize: FontSize.sm, marginTop: Spacing.sm }}>
+            Saving image...
+          </Text>
+        </View>
+      )}
+      {!loading && imageUrl ? (
+        <Animated.View entering={FadeIn.duration(400)} style={styles.imagePreviewWrap}>
+          <ExerciseImage
+            uri={imageUrl}
+            width={SCREEN_W - Spacing.lg * 4}
+            height={190}
+            borderRadius={Radius.xl}
+            style={{ ...Shadow.accentGlow }}
+          />
+          {imageIsLocal && (
+            <View style={styles.localBadge}>
+              <Ionicons name="checkmark-circle" size={14} color={Colors.success} />
+              <Text style={{ color: Colors.success, fontSize: FontSize.xs, marginLeft: 4 }}>
+                Saved locally
+              </Text>
+            </View>
+          )}
+          <TouchableOpacity
+            style={styles.removeImgBtn}
+            onPress={() => { onUrlChange('', false); setUrlInput(''); }}
+          >
+            <Ionicons name="close-circle" size={22} color={Colors.error} />
+          </TouchableOpacity>
+        </Animated.View>
+      ) : null}
+      {!loading && !imageUrl && (
+        <View style={styles.imagePlaceholder}>
+          <Ionicons name="image-outline" size={32} color={Colors.textMuted} />
+          <Text color="muted" style={{ fontSize: FontSize.sm, marginTop: Spacing.sm }}>
+            No image selected
+          </Text>
+        </View>
+      )}
+    </SectionCard>
+  );
+};
+
+// ─── Live Preview Card ────────────────────────────────────────────────────────
+
+const LivePreviewCard: React.FC<{
+  name: string;
+  muscleGroup: string;
+  equipment: string;
+  difficulty: string;
+  imageUrl: string;
+}> = ({ name, muscleGroup, equipment, difficulty, imageUrl }) => {
+  const diffColor: Record<string, string> = {
+    beginner: Colors.success,
+    intermediate: Colors.info,
+    advanced: Colors.error,
+  };
+
+  return (
+    <Animated.View entering={FadeIn.duration(500)} style={styles.previewCard}>
+      <Text
+        style={{
+          fontSize: FontSize.xs,
+          letterSpacing: 1.5,
+          color: Colors.accent,
+          fontWeight: FontWeight.bold,
+          marginBottom: Spacing.md,
+          textTransform: 'uppercase',
+        }}
+      >
+        Live Preview
+      </Text>
+      <View style={styles.previewInner}>
+        {imageUrl ? (
+          <ExerciseImage
+            uri={imageUrl}
+            width={SCREEN_W - Spacing.lg * 4}
+            height={150}
+            borderRadius={Radius.lg}
+          />
+        ) : (
+          <View style={styles.previewNoImg}>
+            <Text style={{ fontSize: 36 }}>🏋️</Text>
+          </View>
+        )}
+        <View style={styles.previewMeta}>
+          <Text semibold style={{ fontSize: FontSize.lg }}>
+            {name || 'Exercise Name'}
+          </Text>
+          <Text color="secondary" style={{ fontSize: FontSize.sm, marginTop: 3, textTransform: 'capitalize' }}>
+            {(muscleGroup || 'muscle').replace(/_/g, ' ')} ·{' '}
+            {(equipment || 'equipment').replace(/_/g, ' ')}
+          </Text>
+          <View style={styles.previewBadgeRow}>
+            <View
+              style={[
+                styles.previewDiffBadge,
+                { backgroundColor: (diffColor[difficulty] || Colors.info) + '33' },
+              ]}
+            >
+              <Text
+                style={{
+                  color: diffColor[difficulty] || Colors.info,
+                  fontSize: FontSize.xs,
+                  fontWeight: FontWeight.semibold,
+                  textTransform: 'capitalize',
+                }}
+              >
+                {difficulty || 'beginner'}
+              </Text>
+            </View>
+            <View style={styles.customBadgePreview}>
+              <Text style={{ color: Colors.accent, fontSize: FontSize.xs }}>✨ Custom</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    </Animated.View>
+  );
+};
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function AddCustomExerciseScreen() {
   const { editId } = useLocalSearchParams<{ editId?: string }>();
   const customExercises = useStore(selectCustomExercises);
+  const draft = useStore(selectCustomExerciseDraft);
   const addCustomExercise = useStore((s) => s.addCustomExercise);
   const updateCustomExercise = useStore((s) => s.updateCustomExercise);
+  const saveCustomExerciseDraft = useStore((s) => s.saveCustomExerciseDraft);
+  const clearCustomExerciseDraft = useStore((s) => s.clearCustomExerciseDraft);
 
   const existing = editId
     ? customExercises.find((e) => e.id === editId)
     : undefined;
 
-  // ── Form state ──
-  const [name, setName] = useState(existing?.name ?? '');
-  const [muscleGroup, setMuscleGroup] = useState<MuscleGroup>(
-    existing?.muscleGroup ?? 'chest'
-  );
-  const [secondaryMuscles, setSecondaryMuscles] = useState<MuscleGroup[]>(
-    (existing?.secondaryMuscles as MuscleGroup[]) ?? []
-  );
-  const [equipment, setEquipment] = useState<Equipment>(
-    existing?.equipment ?? 'bodyweight'
-  );
-  const [difficulty, setDifficulty] = useState<Difficulty>(
-    existing?.difficulty ?? 'beginner'
-  );
-  const [imageUrl, setImageUrl] = useState(existing?.image ?? '');
-  const [imagePreview, setImagePreview] = useState(existing?.image ?? '');
-  const [gifUrl, setGifUrl] = useState(existing?.gif ?? '');
-  const [description, setDescription] = useState(existing?.description ?? '');
-  const [instructions, setInstructions] = useState<string[]>(
-    existing?.instructions ?? ['']
-  );
+  const [imageUrl, setImageUrl] = useState<string>(existing?.image ?? '');
+  const [imageIsLocal, setImageIsLocal] = useState<boolean>(existing?.imageIsLocal ?? false);
+  const [imageError, setImageError] = useState<string>('');
+  const [isSaving, setIsSaving] = useState(false);
 
-  // ── Validation ──
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const scrollRef = useRef<ScrollView>(null);
 
-  const validate = (): boolean => {
-    const newErrors: Record<string, string> = {};
-    if (!name.trim()) {
-      newErrors.name = 'Exercise name is required';
-    } else if (
-      !editId &&
-      customExercises.some(
-        (e) => e.name.toLowerCase() === name.trim().toLowerCase()
-      )
-    ) {
-      newErrors.name = 'An exercise with this name already exists';
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  const {
+    control,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors, isDirty },
+  } = useForm<FormData>({
+    defaultValues: {
+      name: existing?.name ?? draft?.name ?? '',
+      muscleGroup: existing?.muscleGroup ?? draft?.muscleGroup ?? 'chest',
+      secondaryMuscles: (existing?.secondaryMuscles as string[]) ?? [],
+      equipment: existing?.equipment ?? draft?.equipment ?? 'bodyweight',
+      otherEquipment: '',
+      difficulty: existing?.difficulty ?? (draft?.difficulty as FormData['difficulty']) ?? 'beginner',
+      imageUrl: '',
+      gifUrl: existing?.gif ?? '',
+      description: existing?.description ?? '',
+      instructions:
+        existing?.instructions.map((v) => ({ value: v })) ??
+        [{ value: '' }],
+      notes: existing?.notes ?? '',
+    },
+  });
+
+  const { fields: instructionFields, append, remove } = useFieldArray({
+    control,
+    name: 'instructions',
+  });
+
+  const watchedValues = watch(['name', 'muscleGroup', 'equipment', 'difficulty']);
+  const watchedName = watchedValues[0];
+  const watchedMuscle = watchedValues[1];
+  const watchedEquipment = watchedValues[2];
+  const watchedDifficulty = watchedValues[3];
+
+  // Android back button unsaved guard
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const handler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (isDirty || imageUrl) {
+        confirmLeave();
+        return true;
+      }
+      return false;
+    });
+    return () => handler.remove();
+  }, [isDirty, imageUrl]);
+
+  const confirmLeave = () => {
+    Alert.alert(
+      'Unsaved Changes',
+      'You have unsaved changes. Save as draft or discard?',
+      [
+        {
+          text: 'Save Draft',
+          onPress: () => {
+            saveCustomExerciseDraft({
+              name: watchedName,
+              muscleGroup: watchedMuscle,
+              equipment: watchedEquipment,
+              difficulty: watchedDifficulty,
+              savedAt: new Date().toISOString(),
+            });
+            router.back();
+          },
+        },
+        {
+          text: 'Discard',
+          style: 'destructive',
+          onPress: () => {
+            clearCustomExerciseDraft();
+            router.back();
+          },
+        },
+        { text: 'Keep Editing', style: 'cancel' },
+      ]
+    );
   };
 
   const generateId = (n: string): string =>
@@ -121,27 +460,48 @@ export default function AddCustomExerciseScreen() {
     '_' +
     Date.now().toString(36);
 
-  const handleSave = () => {
-    if (!validate()) return;
+  const onSubmit = async (data: FormData) => {
+    // Unique name check
+    if (
+      !editId &&
+      customExercises.some(
+        (e) => e.name.toLowerCase() === data.name.trim().toLowerCase()
+      )
+    ) {
+      Alert.alert('Name taken', 'An exercise with this name already exists. Please choose a different name.');
+      return;
+    }
 
-    const cleanInstructions = instructions.filter((s) => s.trim().length > 0);
+    setIsSaving(true);
+
+    const cleanInstructions = data.instructions
+      .map((i) => i.value.trim())
+      .filter(Boolean);
+
+    const effectiveEquipment: Equipment =
+      data.equipment === 'other' ? 'other' : (data.equipment as Equipment);
 
     const exercise: CustomExercise = {
-      id: existing?.id ?? generateId(name),
-      name: name.trim(),
-      muscleGroup,
-      secondaryMuscles: secondaryMuscles.length > 0 ? secondaryMuscles : undefined,
-      equipment,
+      id: existing?.id ?? generateId(data.name),
+      name: data.name.trim(),
+      muscleGroup: data.muscleGroup as MuscleGroup,
+      secondaryMuscles:
+        data.secondaryMuscles.length > 0
+          ? (data.secondaryMuscles as MuscleGroup[])
+          : undefined,
+      equipment: effectiveEquipment,
       type: 'strength',
-      description: description.trim(),
+      description: data.description?.trim() ?? '',
       instructions: cleanInstructions,
       tips: [],
-      difficulty,
+      difficulty: data.difficulty,
       isPopular: false,
       image:
-        imagePreview.trim() ||
+        imageUrl ||
         'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=800&q=80',
-      gif: gifUrl.trim() || undefined,
+      imageIsLocal,
+      gif: data.gifUrl?.trim() || undefined,
+      notes: data.notes?.trim() || undefined,
       isCustom: true,
       createdAt: existing?.createdAt ?? new Date().toISOString(),
     };
@@ -152,91 +512,141 @@ export default function AddCustomExerciseScreen() {
       addCustomExercise(exercise);
     }
 
+    clearCustomExerciseDraft();
+    setIsSaving(false);
     router.back();
   };
 
-  const toggleSecondaryMuscle = useCallback((m: MuscleGroup) => {
-    setSecondaryMuscles((prev) =>
-      prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]
-    );
-  }, []);
+  const handleCancel = () => {
+    if (isDirty || imageUrl) {
+      confirmLeave();
+    } else {
+      router.back();
+    }
+  };
 
-  const addInstruction = () => setInstructions((prev) => [...prev, '']);
-  const updateInstruction = (i: number, val: string) =>
-    setInstructions((prev) => prev.map((s, idx) => (idx === i ? val : s)));
-  const removeInstruction = (i: number) =>
-    setInstructions((prev) => prev.filter((_, idx) => idx !== i));
+  const selectedMuscles = watch('secondaryMuscles');
+  const selectedEquipment = watch('equipment');
+  const selectedDifficulty = watch('difficulty');
+
+  const toggleSecondary = useCallback(
+    (m: string) => {
+      const current = selectedMuscles ?? [];
+      if (current.includes(m)) {
+        setValue('secondaryMuscles', current.filter((x) => x !== m), { shouldDirty: true });
+      } else {
+        setValue('secondaryMuscles', [...current, m], { shouldDirty: true });
+      }
+    },
+    [selectedMuscles, setValue]
+  );
+
+  // Draft indicator
+  const hasDraft = !!draft && !editId;
 
   return (
     <SafeAreaView style={styles.root} edges={['bottom']}>
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Name ── */}
+        {/* Draft banner */}
+        {hasDraft && (
+          <TouchableOpacity
+            style={styles.draftBanner}
+            onPress={() => {
+              setValue('name', draft.name, { shouldDirty: true });
+              setValue('muscleGroup', draft.muscleGroup, { shouldDirty: true });
+              setValue('equipment', draft.equipment as Equipment, { shouldDirty: true });
+              clearCustomExerciseDraft();
+            }}
+          >
+            <Ionicons name="document-text-outline" size={16} color={Colors.warning} />
+            <Text style={{ color: Colors.warning, fontSize: FontSize.sm, flex: 1, marginLeft: Spacing.sm }}>
+              You have a saved draft — tap to restore
+            </Text>
+            <TouchableOpacity onPress={clearCustomExerciseDraft}>
+              <Ionicons name="close" size={16} color={Colors.warning} />
+            </TouchableOpacity>
+          </TouchableOpacity>
+        )}
+
+        {/* ── Exercise Name ── */}
         <SectionCard>
           <FieldLabel label="Exercise Name" required />
-          <TextInput
-            style={[styles.textInput, errors.name ? styles.inputError : null]}
-            placeholder="e.g. Bulgarian Split Squat"
-            placeholderTextColor={Colors.textMuted}
-            value={name}
-            onChangeText={(v) => {
-              setName(v);
-              if (errors.name) setErrors((e) => ({ ...e, name: '' }));
+          <Controller
+            control={control}
+            name="name"
+            rules={{
+              required: 'Exercise name is required',
+              minLength: { value: 2, message: 'Name must be at least 2 characters' },
+              maxLength: { value: 60, message: 'Name is too long' },
             }}
-            maxLength={60}
+            render={({ field: { onChange, value } }) => (
+              <TextInput
+                style={[styles.textInput, errors.name ? styles.inputError : null]}
+                placeholder="e.g. Bulgarian Split Squat"
+                placeholderTextColor={Colors.textMuted}
+                value={value}
+                onChangeText={onChange}
+                maxLength={60}
+                returnKeyType="next"
+              />
+            )}
           />
-          {errors.name ? (
+          {errors.name && (
             <Text color="error" style={styles.errorText}>
-              {errors.name}
+              {errors.name.message}
             </Text>
-          ) : null}
+          )}
         </SectionCard>
 
-        {/* ── Primary Muscle ── */}
+        {/* ── Primary Muscle Group ── */}
         <SectionCard>
           <FieldLabel label="Primary Muscle Group" required />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.chipRow}>
-              {MUSCLE_GROUPS.map((m) => (
-                <TouchableOpacity
-                  key={m.id}
-                  style={[
-                    styles.chip,
-                    muscleGroup === m.id && styles.chipActive,
-                  ]}
-                  onPress={() => setMuscleGroup(m.id)}
-                >
-                  <Text
-                    style={{
-                      fontSize: FontSize.sm,
-                      color: muscleGroup === m.id ? '#000' : Colors.textSecondary,
-                      fontWeight:
-                        muscleGroup === m.id ? FontWeight.bold : FontWeight.regular,
-                    }}
-                  >
-                    {m.icon} {m.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
+          <Controller
+            control={control}
+            name="muscleGroup"
+            render={({ field: { onChange, value } }) => (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.chipRow}>
+                  {MUSCLE_GROUPS.map((m) => (
+                    <TouchableOpacity
+                      key={m.id}
+                      style={[styles.chip, value === m.id && styles.chipActive]}
+                      onPress={() => onChange(m.id)}
+                    >
+                      <Text
+                        style={{
+                          fontSize: FontSize.sm,
+                          color: value === m.id ? '#000' : Colors.textSecondary,
+                          fontWeight: value === m.id ? FontWeight.bold : FontWeight.regular,
+                        }}
+                      >
+                        {m.icon} {m.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+            )}
+          />
         </SectionCard>
 
         {/* ── Secondary Muscles ── */}
         <SectionCard>
-          <FieldLabel label="Secondary Muscles (optional)" />
+          <FieldLabel label="Secondary Muscles" hint="Optional — select multiple" />
           <View style={styles.wrapChips}>
             {MUSCLE_GROUPS.map((m) => {
-              const active = secondaryMuscles.includes(m.id);
+              const active = selectedMuscles?.includes(m.id) ?? false;
               return (
                 <TouchableOpacity
                   key={m.id}
                   style={[styles.chip, active && styles.chipActiveSecondary]}
-                  onPress={() => toggleSecondaryMuscle(m.id)}
+                  onPress={() => toggleSecondary(m.id)}
                 >
                   <Text
                     style={{
@@ -256,144 +666,181 @@ export default function AddCustomExerciseScreen() {
         {/* ── Equipment ── */}
         <SectionCard>
           <FieldLabel label="Equipment" required />
-          <View style={styles.wrapChips}>
-            {EQUIPMENT_OPTIONS.map((eq) => (
-              <TouchableOpacity
-                key={eq.id}
-                style={[
-                  styles.chip,
-                  equipment === eq.id && styles.chipActive,
-                ]}
-                onPress={() => setEquipment(eq.id)}
-              >
-                <Text
-                  style={{
-                    fontSize: FontSize.sm,
-                    color: equipment === eq.id ? '#000' : Colors.textSecondary,
-                    fontWeight:
-                      equipment === eq.id ? FontWeight.bold : FontWeight.regular,
-                  }}
-                >
-                  {eq.icon} {eq.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <Controller
+            control={control}
+            name="equipment"
+            rules={{ required: 'Equipment is required' }}
+            render={({ field: { onChange, value } }) => (
+              <View style={styles.wrapChips}>
+                {EQUIPMENT_OPTIONS.map((eq) => (
+                  <TouchableOpacity
+                    key={eq}
+                    style={[styles.chip, value === eq && styles.chipActive]}
+                    onPress={() => onChange(eq)}
+                  >
+                    <Text
+                      style={{
+                        fontSize: FontSize.sm,
+                        color: value === eq ? '#000' : Colors.textSecondary,
+                        fontWeight: value === eq ? FontWeight.bold : FontWeight.regular,
+                      }}
+                    >
+                      {EQUIPMENT_LABELS[eq]}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          />
+          {errors.equipment && (
+            <Text color="error" style={styles.errorText}>{errors.equipment.message}</Text>
+          )}
+          {selectedEquipment === 'other' && (
+            <Controller
+              control={control}
+              name="otherEquipment"
+              render={({ field: { onChange, value } }) => (
+                <TextInput
+                  style={[styles.textInput, { marginTop: Spacing.sm }]}
+                  placeholder="Describe the equipment..."
+                  placeholderTextColor={Colors.textMuted}
+                  value={value}
+                  onChangeText={onChange}
+                  maxLength={60}
+                />
+              )}
+            />
+          )}
         </SectionCard>
 
         {/* ── Difficulty ── */}
         <SectionCard>
           <FieldLabel label="Difficulty" required />
-          <View style={styles.segmentRow}>
-            {DIFFICULTY_OPTIONS.map((d) => (
-              <TouchableOpacity
-                key={d}
-                style={[
-                  styles.segment,
-                  difficulty === d && styles.segmentActive,
-                ]}
-                onPress={() => setDifficulty(d)}
-              >
-                <Text
-                  style={{
-                    fontSize: FontSize.sm,
-                    color:
-                      difficulty === d ? '#000' : Colors.textSecondary,
-                    fontWeight:
-                      difficulty === d ? FontWeight.bold : FontWeight.regular,
-                    textTransform: 'capitalize',
-                  }}
-                >
-                  {d}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <Controller
+            control={control}
+            name="difficulty"
+            render={({ field: { onChange, value } }) => (
+              <View style={styles.segmentRow}>
+                {(['beginner', 'intermediate', 'advanced'] as const).map((d) => (
+                  <TouchableOpacity
+                    key={d}
+                    style={[
+                      styles.segment,
+                      value === d && {
+                        backgroundColor:
+                          d === 'beginner'
+                            ? Colors.success
+                            : d === 'intermediate'
+                            ? Colors.info
+                            : Colors.error,
+                      },
+                    ]}
+                    onPress={() => onChange(d)}
+                  >
+                    <Text
+                      style={{
+                        fontSize: FontSize.sm,
+                        color: value === d ? '#fff' : Colors.textSecondary,
+                        fontWeight: value === d ? FontWeight.bold : FontWeight.regular,
+                        textTransform: 'capitalize',
+                      }}
+                    >
+                      {d === 'beginner' ? '🟢' : d === 'intermediate' ? '🟡' : '🔴'} {d}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          />
         </SectionCard>
 
-        {/* ── Image URL ── */}
-        <SectionCard>
-          <FieldLabel label="Image URL (optional)" />
-          <View style={styles.urlRow}>
-            <TextInput
-              style={[styles.textInput, { flex: 1, marginBottom: 0 }]}
-              placeholder="https://..."
-              placeholderTextColor={Colors.textMuted}
-              value={imageUrl}
-              onChangeText={setImageUrl}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
-            />
-            <TouchableOpacity
-              style={styles.previewBtn}
-              onPress={() => setImagePreview(imageUrl)}
-            >
-              <Text style={styles.previewBtnText}>Preview</Text>
-            </TouchableOpacity>
-          </View>
-          {imagePreview ? (
-            <View style={styles.imagePreviewWrap}>
-              <ExerciseImage
-                uri={imagePreview}
-                width={SCREEN_W - Spacing.lg * 4}
-                height={180}
-                borderRadius={Radius.lg}
-              />
-            </View>
-          ) : null}
-        </SectionCard>
+        {/* ── Image (URL + picker) ── */}
+        <ImagePickerSection
+          imageUrl={imageUrl}
+          imageIsLocal={imageIsLocal}
+          onUrlChange={(url, isLocal) => {
+            setImageUrl(url);
+            setImageIsLocal(isLocal);
+            setImageError('');
+          }}
+          error={imageError}
+        />
 
         {/* ── GIF URL ── */}
         <SectionCard>
-          <FieldLabel label="GIF URL (optional)" />
-          <TextInput
-            style={styles.textInput}
-            placeholder="https://...gif"
-            placeholderTextColor={Colors.textMuted}
-            value={gifUrl}
-            onChangeText={setGifUrl}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="url"
+          <FieldLabel label="Animated GIF URL" hint="Optional — shows during workout" />
+          <Controller
+            control={control}
+            name="gifUrl"
+            render={({ field: { onChange, value } }) => (
+              <TextInput
+                style={styles.textInput}
+                placeholder="https://...gif"
+                placeholderTextColor={Colors.textMuted}
+                value={value}
+                onChangeText={onChange}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+              />
+            )}
           />
         </SectionCard>
 
         {/* ── Description ── */}
         <SectionCard>
-          <FieldLabel label="Description (optional)" />
-          <TextInput
-            style={[styles.textInput, styles.multiline]}
-            placeholder="Describe what this exercise targets and how it benefits you..."
-            placeholderTextColor={Colors.textMuted}
-            value={description}
-            onChangeText={setDescription}
-            multiline
-            maxLength={400}
-            textAlignVertical="top"
+          <FieldLabel label="Description" hint="What this exercise targets and how it benefits you" />
+          <Controller
+            control={control}
+            name="description"
+            render={({ field: { onChange, value } }) => (
+              <TextInput
+                style={[styles.textInput, styles.multiline]}
+                placeholder="Describe the exercise..."
+                placeholderTextColor={Colors.textMuted}
+                value={value}
+                onChangeText={onChange}
+                multiline
+                maxLength={500}
+                textAlignVertical="top"
+              />
+            )}
           />
+          {errors.description && (
+            <Text color="error" style={styles.errorText}>{errors.description.message}</Text>
+          )}
         </SectionCard>
 
         {/* ── Instructions ── */}
         <SectionCard>
-          <FieldLabel label="Step-by-Step Instructions (optional)" />
-          {instructions.map((step, i) => (
-            <View key={i} style={styles.instructionRow}>
+          <FieldLabel
+            label="Step-by-Step Instructions"
+            hint="Each step on its own line"
+          />
+          {instructionFields.map((field, i) => (
+            <View key={field.id} style={styles.instructionRow}>
               <View style={styles.stepBadge}>
                 <Text color="accent" style={{ fontWeight: FontWeight.bold, fontSize: FontSize.xs }}>
                   {i + 1}
                 </Text>
               </View>
-              <TextInput
-                style={[styles.textInput, { flex: 1, marginBottom: 0 }]}
-                placeholder={`Step ${i + 1}...`}
-                placeholderTextColor={Colors.textMuted}
-                value={step}
-                onChangeText={(v) => updateInstruction(i, v)}
+              <Controller
+                control={control}
+                name={`instructions.${i}.value`}
+                render={({ field: { onChange, value } }) => (
+                  <TextInput
+                    style={[styles.textInput, { flex: 1, marginBottom: 0 }]}
+                    placeholder={`Step ${i + 1}...`}
+                    placeholderTextColor={Colors.textMuted}
+                    value={value}
+                    onChangeText={onChange}
+                    returnKeyType="next"
+                  />
+                )}
               />
-              {instructions.length > 1 && (
+              {instructionFields.length > 1 && (
                 <TouchableOpacity
-                  onPress={() => removeInstruction(i)}
+                  onPress={() => remove(i)}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
                   <Ionicons name="close-circle" size={20} color={Colors.error} />
@@ -401,67 +848,97 @@ export default function AddCustomExerciseScreen() {
               )}
             </View>
           ))}
-          <TouchableOpacity style={styles.addStepBtn} onPress={addInstruction}>
+          <TouchableOpacity
+            style={styles.addStepBtn}
+            onPress={() => append({ value: '' })}
+          >
             <Ionicons name="add" size={16} color={Colors.accent} />
-            <Text color="accent" style={{ fontSize: FontSize.sm }}>
-              Add Step
-            </Text>
+            <Text color="accent" style={{ fontSize: FontSize.sm }}>Add Step</Text>
           </TouchableOpacity>
         </SectionCard>
 
-        {/* ── Preview Card ── */}
-        {name.trim() ? (
-          <View style={styles.previewCard}>
-            <Text color="secondary" style={styles.previewLabel}>
-              PREVIEW
-            </Text>
-            <View style={styles.previewInner}>
-              {imagePreview ? (
-                <ExerciseImage
-                  uri={imagePreview}
-                  width={SCREEN_W - Spacing.lg * 4}
-                  height={140}
-                  borderRadius={Radius.md}
-                />
-              ) : null}
-              <View style={styles.previewMeta}>
-                <Text semibold style={{ fontSize: FontSize.lg }}>
-                  {name.trim() || 'Exercise Name'}
-                </Text>
-                <Text color="secondary" style={{ fontSize: FontSize.sm, marginTop: 4 }}>
-                  {muscleGroup.replace('_', ' ')} ·{' '}
-                  {equipment.replace('_', ' ')} · {difficulty}
-                </Text>
-                <View
-                  style={[
-                    styles.customBadge,
-                    { backgroundColor: Colors.accentGlow2, borderColor: Colors.accentGlow },
-                  ]}
-                >
-                  <Text color="accent" style={{ fontSize: FontSize.xs }}>
-                    ✨ Custom
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
+        {/* ── Personal Notes / Tips ── */}
+        <SectionCard>
+          <FieldLabel
+            label="Personal Notes & Tips"
+            hint="Your own coaching cues, reminders, or modifications"
+          />
+          <Controller
+            control={control}
+            name="notes"
+            render={({ field: { onChange, value } }) => (
+              <TextInput
+                style={[styles.textInput, styles.multiline, { minHeight: 80 }]}
+                placeholder="e.g. Focus on slow eccentric, keep core braced..."
+                placeholderTextColor={Colors.textMuted}
+                value={value}
+                onChangeText={onChange}
+                multiline
+                maxLength={400}
+                textAlignVertical="top"
+              />
+            )}
+          />
+          {errors.notes && (
+            <Text color="error" style={styles.errorText}>{errors.notes.message}</Text>
+          )}
+        </SectionCard>
+
+        {/* ── Live Preview Card ── */}
+        {watchedName?.trim() ? (
+          <LivePreviewCard
+            name={watchedName}
+            muscleGroup={watchedMuscle}
+            equipment={watchedEquipment}
+            difficulty={watchedDifficulty}
+            imageUrl={imageUrl}
+          />
         ) : null}
 
-        {/* ── Save / Cancel ── */}
+        {/* AI Suggestion hint */}
+        <View style={styles.aiHint}>
+          <Ionicons name="bulb-outline" size={16} color={Colors.warning} />
+          <Text color="muted" style={{ fontSize: FontSize.xs, flex: 1, marginLeft: Spacing.sm, lineHeight: 16 }}>
+            <Text style={{ color: Colors.warning, fontWeight: FontWeight.semibold }}>Tip: </Text>
+            Need inspiration? Popular custom exercises include Bulgarian Split Squat, Landmine Press, Tempo Push-Ups, and Pallof Press.
+          </Text>
+        </View>
+
+        {/* ── Actions ── */}
         <View style={styles.actions}>
           <Button
             title={existing ? 'Update Exercise' : 'Save Exercise'}
             variant="primary"
             size="lg"
             fullWidth
-            onPress={handleSave}
+            onPress={handleSubmit(onSubmit)}
+            loading={isSaving}
           />
+          {!existing && (
+            <Button
+              title="Save as Draft"
+              variant="outline"
+              size="md"
+              fullWidth
+              style={{ marginTop: Spacing.sm }}
+              onPress={() => {
+                saveCustomExerciseDraft({
+                  name: watchedName,
+                  muscleGroup: watchedMuscle,
+                  equipment: watchedEquipment,
+                  difficulty: watchedDifficulty,
+                  savedAt: new Date().toISOString(),
+                });
+                Alert.alert('Draft Saved', 'Your progress has been saved. You can continue later.');
+              }}
+            />
+          )}
           <Button
             title="Cancel"
             variant="ghost"
             size="lg"
             fullWidth
-            onPress={() => router.back()}
+            onPress={handleCancel}
             style={{ marginTop: Spacing.sm }}
           />
         </View>
@@ -470,10 +947,24 @@ export default function AddCustomExerciseScreen() {
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bg },
   scroll: { flex: 1 },
   scrollContent: { padding: Spacing.lg, paddingBottom: Spacing['5xl'] },
+
+  draftBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.warning + '15',
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.warning + '44',
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+    gap: Spacing.xs,
+  },
 
   sectionCard: {
     backgroundColor: Colors.bgCard,
@@ -483,12 +974,12 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     marginBottom: Spacing.md,
   },
-
-  fieldLabel: {
-    fontSize: FontSize.sm,
-    marginBottom: Spacing.sm,
-    letterSpacing: 0.3,
+  sectionCardGlow: {
+    borderColor: Colors.accentGlow,
+    ...Shadow.accentGlow,
   },
+
+  fieldLabel: { fontSize: FontSize.sm, letterSpacing: 0.3 },
   errorText: { fontSize: FontSize.xs, marginTop: Spacing.xs },
 
   textInput: {
@@ -503,7 +994,12 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   inputError: { borderColor: Colors.error },
-  multiline: { minHeight: 90, textAlignVertical: 'top', paddingTop: Spacing.md },
+  multiline: {
+    minHeight: 90,
+    textAlignVertical: 'top',
+    paddingTop: Spacing.md,
+    marginBottom: 0,
+  },
 
   chipRow: { flexDirection: 'row', gap: Spacing.sm },
   wrapChips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
@@ -515,13 +1011,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  chipActive: {
-    backgroundColor: Colors.accent,
-    borderColor: Colors.accent,
-  },
+  chipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   chipActiveSecondary: {
     backgroundColor: Colors.accentGlow2,
-    borderColor: Colors.accentGlow,
+    borderColor: Colors.accent,
   },
 
   segmentRow: {
@@ -538,17 +1031,48 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  segmentActive: {
-    backgroundColor: Colors.accent,
-  },
 
-  urlRow: {
+  // Image picker
+  imagePickRow: { gap: Spacing.md },
+  imagePickBtn: {
+    flex: 1,
     flexDirection: 'row',
-    gap: Spacing.sm,
     alignItems: 'center',
-    marginBottom: Spacing.sm,
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Colors.accentGlow2,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.accent,
+    paddingVertical: Spacing.md,
   },
-  previewBtn: {
+  imagePickOrDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: Spacing.xs,
+  },
+  imagePickDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.border,
+  },
+  urlInputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  urlInput: {
+    flex: 1,
+    backgroundColor: Colors.bgInput,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    color: Colors.textPrimary,
+    fontSize: FontSize.sm,
+  },
+  applyBtn: {
     backgroundColor: Colors.bgCard2,
     borderRadius: Radius.md,
     borderWidth: 1,
@@ -556,13 +1080,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
   },
-  previewBtnText: {
+  applyBtnText: {
     color: Colors.accent,
     fontWeight: FontWeight.semibold,
     fontSize: FontSize.sm,
   },
-  imagePreviewWrap: { marginTop: Spacing.sm },
+  imagePlaceholder: {
+    height: 120,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.sm,
+  },
+  imagePreviewWrap: {
+    marginTop: Spacing.md,
+    position: 'relative',
+  },
+  localBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: Spacing.sm,
+  },
+  removeImgBtn: {
+    position: 'absolute',
+    top: Spacing.sm,
+    right: Spacing.sm,
+  },
 
+  // Instructions
   instructionRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -586,8 +1134,23 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
     marginTop: Spacing.xs,
     padding: Spacing.sm,
+    alignSelf: 'flex-start',
   },
 
+  // AI hint
+  aiHint: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: Colors.warning + '10',
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.warning + '30',
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+    gap: Spacing.xs,
+  },
+
+  // Preview card
   previewCard: {
     backgroundColor: Colors.bgCard,
     borderRadius: Radius.xl,
@@ -597,21 +1160,33 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
     ...Shadow.accentGlow,
   },
-  previewLabel: {
-    fontSize: FontSize.xs,
-    letterSpacing: 1.5,
-    marginBottom: Spacing.md,
-    fontWeight: FontWeight.semibold,
-  },
   previewInner: { gap: Spacing.md },
+  previewNoImg: {
+    height: 120,
+    backgroundColor: Colors.bgCard2,
+    borderRadius: Radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   previewMeta: { gap: 4 },
-  customBadge: {
-    alignSelf: 'flex-start',
+  previewBadgeRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginTop: Spacing.sm,
+    flexWrap: 'wrap',
+  },
+  previewDiffBadge: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 3,
+    borderRadius: Radius.full,
+  },
+  customBadgePreview: {
+    backgroundColor: Colors.accentGlow2,
     borderRadius: Radius.full,
     borderWidth: 1,
+    borderColor: Colors.accentGlow,
     paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
-    marginTop: Spacing.xs,
+    paddingVertical: 3,
   },
 
   actions: { marginTop: Spacing.md },

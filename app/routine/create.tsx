@@ -1,7 +1,7 @@
 /**
- * Create Routine Screen — Add exercises, configure sets/reps/weight
- * v1.5: Tabbed exercise picker (All / My Exercises), exercise images,
- *       "Create Custom Exercise" deep link.
+ * Create Routine Screen — v2.0
+ * Tabbed exercise picker (All / My Exercises), custom badge in all lists,
+ * floating "+ Add Custom Exercise" FAB, search + muscle filters.
  */
 
 import React, { useState } from 'react';
@@ -31,6 +31,7 @@ import {
   type Exercise,
   type CustomExercise,
 } from '@/lib/exercises';
+import type { ViewStyle } from 'react-native';
 
 const ROUTINE_COLORS = [
   '#00FF9D', '#FF6B6B', '#4DA6FF', '#FFB547',
@@ -157,53 +158,63 @@ const ExercisePickerModal: React.FC<{
               ))}
             </ScrollView>
 
+            {/* Floating "Create Custom" FAB inside picker */}
+            <TouchableOpacity
+              style={styles.pickerFab}
+              onPress={handleNavigateCreate}
+            >
+              <Ionicons name="add" size={18} color="#000" />
+              <Text style={{ color: '#000', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>
+                + Create Custom Exercise
+              </Text>
+            </TouchableOpacity>
+
             {/* Exercise list */}
             <FlatList
               data={filtered}
               keyExtractor={(item) => item.id}
-              contentContainerStyle={{ paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xxxl }}
+              contentContainerStyle={{ paddingHorizontal: Spacing.lg, paddingBottom: Spacing['5xl'] }}
               ItemSeparatorComponent={() => <View style={{ height: Spacing.sm }} />}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.exerciseItem}
-                  onPress={() => { onSelect(item); onClose(); }}
-                  activeOpacity={0.8}
-                >
-                  {/* Thumbnail */}
-                  <ExerciseImage
-                    uri={item.image}
-                    width={60}
-                    height={46}
-                    borderRadius={Radius.sm}
-                  />
-                  <View style={styles.exerciseItemLeft}>
-                    <Text semibold style={{ marginBottom: 2 }}>
-                      {item.name}
-                    </Text>
-                    <Text color="muted" style={{ fontSize: FontSize.xs }}>
-                      {item.muscleGroup.replace('_', ' ')} · {item.equipment.replace('_', ' ')}
-                    </Text>
-                  </View>
-                  <View style={styles.exerciseItemRight}>
-                    <Badge
-                      label={item.difficulty}
-                      variant={
-                        item.difficulty === 'beginner'
-                          ? 'accent'
-                          : item.difficulty === 'intermediate'
-                          ? 'info'
-                          : 'error'
-                      }
-                    />
-                    <Ionicons
-                      name="add-circle"
-                      size={22}
-                      color={Colors.accent}
-                      style={{ marginLeft: Spacing.sm }}
-                    />
-                  </View>
-                </TouchableOpacity>
-              )}
+              renderItem={({ item }) => {
+                const isCustom = 'isCustom' in item && item.isCustom;
+                return (
+                  <TouchableOpacity
+                    style={styles.exerciseItem}
+                    onPress={() => { onSelect(item); onClose(); }}
+                    activeOpacity={0.8}
+                  >
+                    <ExerciseImage uri={item.image} width={60} height={46} borderRadius={Radius.sm} />
+                    <View style={styles.exerciseItemLeft}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, flexWrap: 'wrap' }}>
+                        <Text semibold style={{ marginBottom: 2, flexShrink: 1 }}>
+                          {item.name}
+                        </Text>
+                        {isCustom ? (
+                          <View style={styles.customBadge}>
+                            <Text style={styles.customBadgeText}>✨ Custom</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                      <Text color="muted" style={{ fontSize: FontSize.xs }}>
+                        {item.muscleGroup.replace(/_/g, ' ')} · {item.equipment.replace(/_/g, ' ')}
+                      </Text>
+                    </View>
+                    <View style={styles.exerciseItemRight}>
+                      <Badge
+                        label={item.difficulty}
+                        variant={
+                          item.difficulty === 'beginner'
+                            ? 'accent'
+                            : item.difficulty === 'intermediate'
+                            ? 'info'
+                            : 'error'
+                        }
+                      />
+                      <Ionicons name="add-circle" size={22} color={Colors.accent} style={{ marginLeft: Spacing.sm }} />
+                    </View>
+                  </TouchableOpacity>
+                );
+              }}
             />
           </>
         )}
@@ -651,6 +662,32 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     gap: Spacing.md,
   },
-  exerciseItemLeft: { flex: 1 },
+  exerciseItemLeft: { flex: 1, minWidth: 0 },
   exerciseItemRight: { flexDirection: 'row', alignItems: 'center' },
+
+  pickerFab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.accent,
+    borderRadius: Radius.md,
+    paddingVertical: Spacing.md,
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.sm,
+    gap: Spacing.sm,
+    ...Shadow.accentGlow,
+  },
+  customBadge: {
+    backgroundColor: 'rgba(0,255,157,0.12)',
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(0,255,157,0.3)',
+    paddingHorizontal: Spacing.xs,
+    paddingVertical: 2,
+  },
+  customBadgeText: {
+    color: Colors.accent,
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semibold,
+  },
 });

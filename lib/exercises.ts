@@ -24,7 +24,8 @@ export type Equipment =
   | 'bodyweight'
   | 'kettlebell'
   | 'resistance_band'
-  | 'smith_machine';
+  | 'smith_machine'
+  | 'other';
 
 export type ExerciseType = 'strength' | 'cardio' | 'flexibility';
 
@@ -54,6 +55,10 @@ export interface CustomExercise extends Exercise {
   isCustom: true;
   createdAt: string;
   userId?: string;
+  /** Personal notes / coaching tips */
+  notes?: string;
+  /** Whether the image was uploaded locally (file URI vs remote URL) */
+  imageIsLocal?: boolean;
 }
 
 const _EXERCISES: RawExercise[] = [
@@ -603,6 +608,47 @@ export const searchExercises = (query: string) =>
       e.name.toLowerCase().includes(query.toLowerCase()) ||
       e.muscleGroup.includes(query.toLowerCase())
   );
+
+/** Search across both default and custom exercises */
+export const searchAllExercises = (
+  query: string,
+  customExercises: CustomExercise[],
+  filters?: {
+    muscle?: MuscleGroup | null;
+    equipment?: Equipment | null;
+    difficulty?: 'beginner' | 'intermediate' | 'advanced' | null;
+    customOnly?: boolean;
+  }
+): (Exercise | CustomExercise)[] => {
+  const q = query.toLowerCase();
+  const all: (Exercise | CustomExercise)[] = filters?.customOnly
+    ? [...customExercises]
+    : [...EXERCISES, ...customExercises];
+
+  return all.filter((e) => {
+    const matchQ =
+      q.length === 0 ||
+      e.name.toLowerCase().includes(q) ||
+      e.muscleGroup.includes(q) ||
+      e.equipment.includes(q);
+    const matchMuscle = !filters?.muscle || e.muscleGroup === filters.muscle;
+    const matchEquip = !filters?.equipment || e.equipment === filters.equipment;
+    const matchDiff = !filters?.difficulty || e.difficulty === filters.difficulty;
+    return matchQ && matchMuscle && matchEquip && matchDiff;
+  });
+};
+
+export const EQUIPMENT_LABELS: Record<Equipment, string> = {
+  barbell: 'Barbell',
+  dumbbell: 'Dumbbell',
+  machine: 'Machine',
+  cable: 'Cable',
+  bodyweight: 'Bodyweight',
+  kettlebell: 'Kettlebell',
+  resistance_band: 'Resistance Band',
+  smith_machine: 'Smith Machine',
+  other: 'Other',
+};
 
 /**
  * Get all exercises (default + custom). Pass customExercises from the store.

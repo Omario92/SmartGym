@@ -1,7 +1,7 @@
 /**
- * Routine Detail / Edit Screen
- * v1.5: Fixed primaryMuscles bug, fixed updateRoutine signature,
- *       added tabbed exercise picker with images + custom exercise support.
+ * Routine Detail / Edit Screen — v2.0
+ * Custom badges on all exercises, floating "Create Custom" FAB in picker,
+ * same tabbed picker with My Exercises filter support.
  */
 
 import React, { useState, useCallback } from 'react';
@@ -173,42 +173,54 @@ function ExercisePicker({
               ))}
             </ScrollView>
 
+            {/* Floating create custom FAB */}
+            <TouchableOpacity style={styles.pickerFab} onPress={handleNavigateCreate}>
+              <Ionicons name="add" size={18} color="#000" />
+              <Text style={{ color: '#000', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>
+                + Create Custom Exercise
+              </Text>
+            </TouchableOpacity>
+
             {/* Exercise list */}
             <FlatList
               data={filtered}
               keyExtractor={(item) => item.id}
-              contentContainerStyle={{ padding: Spacing.md, paddingBottom: 40 }}
+              contentContainerStyle={{ padding: Spacing.md, paddingBottom: 60 }}
               ItemSeparatorComponent={() => (
                 <View style={{ height: 1, backgroundColor: Colors.divider }} />
               )}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.exerciseRow}
-                  onPress={() => { onSelect(item); onClose(); }}
-                >
-                  <ExerciseImage
-                    uri={item.image}
-                    width={52}
-                    height={40}
-                    borderRadius={Radius.xs}
-                  />
-                  <View style={styles.exerciseInfo}>
-                    <Text variant="body" bold color="primary">{item.name}</Text>
-                    <Text variant="caption" color="secondary">
-                      {/* FIXED: was item.primaryMuscles (didn't exist) */}
-                      {item.muscleGroup.replace('_', ' ')} · {item.equipment.replace('_', ' ')}
-                    </Text>
-                  </View>
-                  <Badge
-                    label={item.difficulty}
-                    variant={
-                      item.difficulty === 'beginner' ? 'accent'
-                      : item.difficulty === 'intermediate' ? 'info'
-                      : 'warning'
-                    }
-                  />
-                </TouchableOpacity>
-              )}
+              renderItem={({ item }) => {
+                const isCustom = 'isCustom' in item && item.isCustom;
+                return (
+                  <TouchableOpacity
+                    style={styles.exerciseRow}
+                    onPress={() => { onSelect(item); onClose(); }}
+                  >
+                    <ExerciseImage uri={item.image} width={52} height={40} borderRadius={Radius.xs} />
+                    <View style={styles.exerciseInfo}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <Text variant="body" bold color="primary">{item.name}</Text>
+                        {isCustom ? (
+                          <View style={styles.customBadge}>
+                            <Text style={styles.customBadgeText}>✨ Custom</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                      <Text variant="caption" color="secondary">
+                        {item.muscleGroup.replace(/_/g, ' ')} · {item.equipment.replace(/_/g, ' ')}
+                      </Text>
+                    </View>
+                    <Badge
+                      label={item.difficulty}
+                      variant={
+                        item.difficulty === 'beginner' ? 'accent'
+                        : item.difficulty === 'intermediate' ? 'info'
+                        : 'warning'
+                      }
+                    />
+                  </TouchableOpacity>
+                );
+              }}
               ListEmptyComponent={
                 <View style={{ alignItems: 'center', paddingTop: 40 }}>
                   <Text variant="body" color="secondary">No exercises found</Text>
@@ -421,6 +433,7 @@ export default function RoutineDetailScreen() {
 
           {exercises.map((ex, idx) => {
             const exInfo = allExercises.find((e) => e.id === ex.exerciseId);
+            const isCustom = exInfo && 'isCustom' in exInfo && exInfo.isCustom;
             return (
               <Card key={idx} style={styles.exCard}>
                 {/* Image + name row */}
@@ -434,9 +447,18 @@ export default function RoutineDetailScreen() {
                     />
                   )}
                   <View style={[styles.exColorBar, { backgroundColor: color }]} />
-                  <Text variant="body" bold color="primary" style={{ flex: 1 }}>
-                    {ex.exerciseName}
-                  </Text>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <Text variant="body" bold color="primary" style={{ flexShrink: 1 }}>
+                        {ex.exerciseName}
+                      </Text>
+                      {isCustom ? (
+                        <View style={styles.customBadge}>
+                          <Text style={styles.customBadgeText}>✨ Custom</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  </View>
                   <TouchableOpacity onPress={() => removeExercise(idx)} style={styles.removeBtn}>
                     <Ionicons name="close-circle" size={20} color={Colors.textMuted} />
                   </TouchableOpacity>
@@ -661,5 +683,34 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.divider,
     gap: 10,
   },
-  exerciseInfo: { flex: 1, gap: 3 },
+  exerciseInfo: { flex: 1, gap: 3, minWidth: 0 },
+  pickerFab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.accent,
+    borderRadius: Radius.md,
+    paddingVertical: Spacing.md,
+    marginHorizontal: Spacing.md,
+    marginBottom: Spacing.sm,
+    gap: Spacing.sm,
+    shadowColor: Colors.accent,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  customBadge: {
+    backgroundColor: 'rgba(0,255,157,0.12)',
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(0,255,157,0.3)',
+    paddingHorizontal: Spacing.xs,
+    paddingVertical: 2,
+  },
+  customBadgeText: {
+    color: Colors.accent,
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semibold,
+  },
 });

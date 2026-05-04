@@ -1,5 +1,6 @@
 /**
- * More Tab — Settings, Premium upsell, profile, about
+ * More Tab — v2.0
+ * My Exercises hub, Favorites quick-access, Settings, Premium upsell.
  */
 
 import React, { useState } from 'react';
@@ -11,15 +12,19 @@ import {
   Switch,
   Alert,
   Linking,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { useStore } from '@/store';
+import { CustomExerciseManager } from '@/components/exercise/CustomExerciseManager';
+import { GlobalExerciseSearch } from '@/components/exercise/GlobalExerciseSearch';
+import { useStore, selectCustomExercises, selectFavoriteIds } from '@/store';
 
 // ─── Row Components ───────────────────────────────────────────────────────────
 
@@ -171,6 +176,11 @@ export default function MoreScreen() {
   const settings = useStore(s => s.settings);
   const updateSettings = useStore(s => s.updateSettings);
   const startTour = useStore(s => s.startTour);
+  const customExercises = useStore(selectCustomExercises);
+  const favoriteIds = useStore(selectFavoriteIds);
+
+  const [myExercisesVisible, setMyExercisesVisible] = useState(false);
+  const [favSearchVisible, setFavSearchVisible] = useState(false);
 
   const handleUpgrade = () => {
     Alert.alert(
@@ -205,6 +215,39 @@ export default function MoreScreen() {
         <Text variant="h2">More</Text>
       </View>
 
+      {/* My Exercises full-screen modal */}
+      <Modal
+        visible={myExercisesVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: Colors.bgModal }} edges={['top', 'bottom']}>
+          <View style={styles.modalHeader}>
+            <Text variant="h3">My Custom Exercises</Text>
+            <TouchableOpacity onPress={() => setMyExercisesVisible(false)}>
+              <Ionicons name="close" size={24} color={Colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+          <CustomExerciseManager
+            standalone
+            onCreateNew={() => {
+              setMyExercisesVisible(false);
+              setTimeout(() => router.push('/routine/add-custom-exercise'), 300);
+            }}
+            onEdit={(ex) => {
+              setMyExercisesVisible(false);
+              setTimeout(() => router.push(`/routine/add-custom-exercise?editId=${ex.id}`), 300);
+            }}
+          />
+        </SafeAreaView>
+      </Modal>
+
+      {/* Favorites search modal */}
+      <GlobalExerciseSearch
+        visible={favSearchVisible}
+        onClose={() => setFavSearchVisible(false)}
+      />
+
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -212,6 +255,60 @@ export default function MoreScreen() {
       >
         {/* Premium Card */}
         <PremiumCard isPremium={settings.isPremium} onUpgrade={handleUpgrade} />
+
+        {/* My Exercises Hub */}
+        <SectionHeader title="Exercise Library" />
+        <Card style={styles.section} noPadding>
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => setMyExercisesVisible(true)}
+            activeOpacity={0.75}
+          >
+            <View style={styles.settingIcon}>
+              <Text style={{ fontSize: 18 }}>🏗️</Text>
+            </View>
+            <Text style={styles.settingLabel}>My Custom Exercises</Text>
+            {customExercises.length > 0 ? (
+              <View style={styles.countBadge}>
+                <Text style={{ color: Colors.accent, fontSize: FontSize.xs, fontWeight: FontWeight.bold }}>
+                  {customExercises.length}
+                </Text>
+              </View>
+            ) : null}
+            <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+          </TouchableOpacity>
+          <View style={styles.divider} />
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => setFavSearchVisible(true)}
+            activeOpacity={0.75}
+          >
+            <View style={styles.settingIcon}>
+              <Text style={{ fontSize: 18 }}>❤️</Text>
+            </View>
+            <Text style={styles.settingLabel}>Favorite Exercises</Text>
+            {favoriteIds.length > 0 ? (
+              <View style={[styles.countBadge, { backgroundColor: Colors.error + '22', borderColor: Colors.error + '44' }]}>
+                <Text style={{ color: Colors.error, fontSize: FontSize.xs, fontWeight: FontWeight.bold }}>
+                  {favoriteIds.length}
+                </Text>
+              </View>
+            ) : null}
+            <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+          </TouchableOpacity>
+          <View style={styles.divider} />
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => router.push('/routine/add-custom-exercise')}
+            activeOpacity={0.75}
+          >
+            <View style={styles.settingIcon}>
+              <Text style={{ fontSize: 18 }}>✨</Text>
+            </View>
+            <Text style={styles.settingLabel}>Create New Exercise</Text>
+            <Ionicons name="chevron-forward" size={16} color={Colors.accent} />
+          </TouchableOpacity>
+        </Card>
 
         {/* Profile Section */}
         <SectionHeader title="Profile" />
@@ -272,7 +369,7 @@ export default function MoreScreen() {
             icon="📊"
             label="1RM Calculator"
             badge="NEW"
-            onPress={() => Alert.alert('Coming Soon', '1 Rep Max calculator coming soon!')}
+            onPress={() => router.push('/tools/1rm-calculator')}
           />
         </Card>
 
@@ -389,7 +486,7 @@ export default function MoreScreen() {
             SmartGym
           </Text>
           <Text color="muted" style={{ fontSize: FontSize.xs, marginTop: 4 }}>
-            Version 1.0.0 • Made with ❤️
+            Version 2.0.0 • Made with ❤️
           </Text>
         </View>
       </ScrollView>
@@ -486,4 +583,28 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xl,
   },
   appLogo: { fontSize: 48, marginBottom: Spacing.sm },
+
+  // Modal header
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+
+  // Count badge
+  countBadge: {
+    backgroundColor: Colors.accentGlow2,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: Colors.accentGlow,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    marginRight: Spacing.sm,
+    minWidth: 24,
+    alignItems: 'center',
+  },
 });

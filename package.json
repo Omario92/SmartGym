@@ -1,6 +1,6 @@
 {
   "name": "smartgym",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
@@ -19,7 +19,9 @@
     "expo-constants": "~55.0.15",
     "expo-font": "~55.0.6",
     "expo-haptics": "~55.0.14",
+    "expo-image-picker": "~55.0.19",
     "expo-linking": "~55.0.14",
+    "expo-media-library": "~55.0.15",
     "expo-notifications": "~55.0.21",
     "expo-router": "~55.0.13",
     "expo-splash-screen": "~55.0.19",
@@ -28,6 +30,7 @@
     "expo-system-ui": "~55.0.16",
     "immer": "^10.1.1",
     "react": "19.2.0",
+    "react-hook-form": "^7.75.0",
     "react-native": "0.83.6",
     "react-native-gesture-handler": "~2.30.0",
     "react-native-reanimated": "4.2.1",
