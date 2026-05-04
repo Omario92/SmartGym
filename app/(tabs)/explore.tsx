@@ -1,16 +1,12 @@
 /**
  * Explore Tab — Discover workouts, AI trainer, exercise library
+ * "Save to Routines" properly converts Featured Programs into persisted Routines.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
-  View,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  ImageBackground,
-  Dimensions,
-  Alert,
+  View, ScrollView, StyleSheet, TouchableOpacity,
+  Dimensions, Alert, Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,9 +15,31 @@ import { Text } from '@/components/ui/Text';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { useStore } from '@/store';
+import type { Routine, RoutineExercise } from '@/store';
 
 const { width: SCREEN_W } = Dimensions.get('window');
-const CARD_W = SCREEN_W - Spacing.lg * 2;
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+
+const useToast = () => {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const [message, setMessage] = useState('');
+  const show = (msg: string) => {
+    setMessage(msg);
+    Animated.sequence([
+      Animated.timing(opacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.delay(1800),
+      Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+    ]).start();
+  };
+  const ToastComponent = () => (
+    <Animated.View style={[styles.toast, { opacity }]} pointerEvents="none">
+      <Text style={{ color: '#000', fontWeight: FontWeight.semibold, fontSize: FontSize.sm }}>{message}</Text>
+    </Animated.View>
+  );
+  return { show, ToastComponent };
+};
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -30,7 +48,7 @@ const FEATURED_PROGRAMS = [
     id: '7min',
     title: '7 Minute Workout',
     subtitle: 'Quick & effective',
-    duration: '7 min',
+    duration: '7',
     level: 'Beginner',
     exercises: 12,
     calories: 120,
@@ -42,7 +60,7 @@ const FEATURED_PROGRAMS = [
     id: 'fullbody',
     title: 'Full Body Blast',
     subtitle: 'Compound movements',
-    duration: '45 min',
+    duration: '45',
     level: 'Intermediate',
     exercises: 8,
     calories: 380,
@@ -54,7 +72,7 @@ const FEATURED_PROGRAMS = [
     id: 'hiit',
     title: 'HIIT Cardio',
     subtitle: 'Fat burning protocol',
-    duration: '30 min',
+    duration: '30',
     level: 'Advanced',
     exercises: 10,
     calories: 450,
@@ -66,7 +84,7 @@ const FEATURED_PROGRAMS = [
     id: 'strength',
     title: 'Strength Builder',
     subtitle: 'Progressive overload',
-    duration: '60 min',
+    duration: '60',
     level: 'Intermediate',
     exercises: 6,
     calories: 290,
@@ -75,6 +93,54 @@ const FEATURED_PROGRAMS = [
     description: 'Build raw strength with powerlifting-inspired progressive overload programming.',
   },
 ];
+
+/** Exercise templates for each featured program */
+const PROGRAM_EXERCISES: Record<string, RoutineExercise[]> = {
+  '7min': [
+    { exerciseId: 'jumping_jacks', exerciseName: 'Jumping Jacks', sets: 1, reps: 30 },
+    { exerciseId: 'push_ups', exerciseName: 'Push-Ups', sets: 1, reps: 15 },
+    { exerciseId: 'squat', exerciseName: 'Squats', sets: 1, reps: 20 },
+    { exerciseId: 'crunches', exerciseName: 'Crunches', sets: 1, reps: 20 },
+    { exerciseId: 'mountain_climbers', exerciseName: 'Mountain Climbers', sets: 1, reps: 30 },
+    { exerciseId: 'plank', exerciseName: 'Plank (30s)', sets: 1, reps: 1 },
+    { exerciseId: 'lunges', exerciseName: 'Lunges', sets: 1, reps: 12 },
+    { exerciseId: 'burpees', exerciseName: 'Burpees', sets: 1, reps: 10 },
+    { exerciseId: 'push_ups', exerciseName: 'Push-Ups (wide)', sets: 1, reps: 12 },
+    { exerciseId: 'leg_raises', exerciseName: 'Leg Raises', sets: 1, reps: 15 },
+    { exerciseId: 'mountain_climbers', exerciseName: 'Mountain Climbers (fast)', sets: 1, reps: 20 },
+    { exerciseId: 'jumping_jacks', exerciseName: 'Jumping Jacks (cooldown)', sets: 1, reps: 20 },
+  ],
+  'fullbody': [
+    { exerciseId: 'squat', exerciseName: 'Back Squat', sets: 4, reps: 8, weight: 60 },
+    { exerciseId: 'deadlift', exerciseName: 'Deadlift', sets: 3, reps: 6, weight: 80 },
+    { exerciseId: 'bench_press', exerciseName: 'Bench Press', sets: 4, reps: 8, weight: 60 },
+    { exerciseId: 'barbell_row', exerciseName: 'Barbell Row', sets: 3, reps: 10, weight: 50 },
+    { exerciseId: 'overhead_press', exerciseName: 'Overhead Press', sets: 3, reps: 10, weight: 40 },
+    { exerciseId: 'pull_ups', exerciseName: 'Pull-Ups', sets: 3, reps: 8 },
+    { exerciseId: 'lunges', exerciseName: 'Lunges', sets: 3, reps: 12, weight: 20 },
+    { exerciseId: 'plank', exerciseName: 'Plank', sets: 3, reps: 1 },
+  ],
+  'hiit': [
+    { exerciseId: 'burpees', exerciseName: 'Burpees', sets: 4, reps: 15 },
+    { exerciseId: 'mountain_climbers', exerciseName: 'Mountain Climbers', sets: 4, reps: 30 },
+    { exerciseId: 'jumping_jacks', exerciseName: 'Jumping Jacks', sets: 4, reps: 40 },
+    { exerciseId: 'squat', exerciseName: 'Jump Squats', sets: 4, reps: 15 },
+    { exerciseId: 'push_ups', exerciseName: 'Explosive Push-Ups', sets: 4, reps: 12 },
+    { exerciseId: 'lunges', exerciseName: 'Jump Lunges', sets: 4, reps: 16 },
+    { exerciseId: 'leg_raises', exerciseName: 'Leg Raises', sets: 3, reps: 15 },
+    { exerciseId: 'crunches', exerciseName: 'Bicycle Crunches', sets: 3, reps: 20 },
+    { exerciseId: 'plank', exerciseName: 'Plank', sets: 3, reps: 1 },
+    { exerciseId: 'burpees', exerciseName: 'Burpees (finisher)', sets: 2, reps: 10 },
+  ],
+  'strength': [
+    { exerciseId: 'squat', exerciseName: 'Back Squat', sets: 5, reps: 5, weight: 80, restSeconds: 180 },
+    { exerciseId: 'deadlift', exerciseName: 'Deadlift', sets: 4, reps: 4, weight: 100, restSeconds: 180 },
+    { exerciseId: 'bench_press', exerciseName: 'Bench Press', sets: 5, reps: 5, weight: 70, restSeconds: 150 },
+    { exerciseId: 'barbell_row', exerciseName: 'Barbell Row', sets: 4, reps: 6, weight: 60, restSeconds: 120 },
+    { exerciseId: 'overhead_press', exerciseName: 'Overhead Press', sets: 4, reps: 6, weight: 45, restSeconds: 120 },
+    { exerciseId: 'pull_ups', exerciseName: 'Weighted Pull-Ups', sets: 4, reps: 6 },
+  ],
+};
 
 const EXERCISE_CATEGORIES = [
   { id: 'chest', label: 'Chest', icon: '💪', count: 12, color: '#FF6B6B' },
@@ -94,15 +160,32 @@ const QUICK_WORKOUTS = [
   { id: 'yoga', name: 'Morning Stretch', time: '12 min', level: 'Beginner', emoji: '🧘' },
 ];
 
+// ─── Convert program → Routine ────────────────────────────────────────────────
+
+function programToRoutine(program: typeof FEATURED_PROGRAMS[0]): Routine {
+  return {
+    id: `program_${program.id}_${Date.now()}`,
+    name: program.title,
+    description: program.description,
+    color: program.color,
+    category: program.level.toLowerCase(),
+    estimatedDuration: parseInt(program.duration, 10),
+    createdAt: new Date().toISOString(),
+    exercises: PROGRAM_EXERCISES[program.id] ?? [],
+  };
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-const ProgramCard: React.FC<{ program: typeof FEATURED_PROGRAMS[0]; onPress: () => void }> = ({
-  program,
-  onPress,
-}) => (
-  <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={styles.programCard}>
+const ProgramCard: React.FC<{
+  program: typeof FEATURED_PROGRAMS[0];
+  saved: boolean;
+  onStart: () => void;
+  onSave: () => void;
+}> = ({ program, saved, onStart, onSave }) => (
+  <TouchableOpacity onPress={onStart} activeOpacity={0.85} style={styles.programCard}>
     <View style={[styles.programCardBg, { borderColor: program.color + '33' }]}>
-      {/* Top section */}
+      {/* Top */}
       <View style={[styles.programCardTop, { backgroundColor: program.color + '15' }]}>
         <Text style={styles.programEmoji}>{program.emoji}</Text>
         <Badge
@@ -113,9 +196,7 @@ const ProgramCard: React.FC<{ program: typeof FEATURED_PROGRAMS[0]; onPress: () 
 
       {/* Content */}
       <View style={styles.programCardContent}>
-        <Text variant="h4" style={{ marginBottom: 4 }}>
-          {program.title}
-        </Text>
+        <Text variant="h4" style={{ marginBottom: 4 }}>{program.title}</Text>
         <Text color="secondary" style={{ fontSize: FontSize.sm, marginBottom: Spacing.md }}>
           {program.description}
         </Text>
@@ -123,33 +204,36 @@ const ProgramCard: React.FC<{ program: typeof FEATURED_PROGRAMS[0]; onPress: () 
         <View style={styles.programStats}>
           <View style={styles.programStat}>
             <Ionicons name="time-outline" size={13} color={Colors.textMuted} />
-            <Text color="muted" style={{ fontSize: FontSize.xs, marginLeft: 3 }}>
-              {program.duration}
-            </Text>
+            <Text color="muted" style={{ fontSize: FontSize.xs, marginLeft: 3 }}>{program.duration} min</Text>
           </View>
           <View style={styles.programStat}>
             <Ionicons name="barbell-outline" size={13} color={Colors.textMuted} />
-            <Text color="muted" style={{ fontSize: FontSize.xs, marginLeft: 3 }}>
-              {program.exercises} exercises
-            </Text>
+            <Text color="muted" style={{ fontSize: FontSize.xs, marginLeft: 3 }}>{program.exercises} exercises</Text>
           </View>
           <View style={styles.programStat}>
             <Ionicons name="flame-outline" size={13} color={Colors.textMuted} />
-            <Text color="muted" style={{ fontSize: FontSize.xs, marginLeft: 3 }}>
-              ~{program.calories} kcal
-            </Text>
+            <Text color="muted" style={{ fontSize: FontSize.xs, marginLeft: 3 }}>~{program.calories} kcal</Text>
           </View>
         </View>
 
-        <TouchableOpacity
-          style={[styles.programStartBtn, { backgroundColor: program.color }]}
-          onPress={onPress}
-          activeOpacity={0.8}
-        >
-          <Text style={{ color: '#000', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>
-            Start Workout
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.programActions}>
+          <TouchableOpacity
+            style={[styles.programStartBtn, { backgroundColor: program.color, flex: 1 }]}
+            onPress={onStart} activeOpacity={0.8}>
+            <Text style={{ color: '#000', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>
+              Start Workout
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.saveBtn, saved && styles.saveBtnActive]}
+            onPress={onSave} activeOpacity={0.8}>
+            <Ionicons
+              name={saved ? 'bookmark' : 'bookmark-outline'}
+              size={18}
+              color={saved ? Colors.accent : Colors.textSecondary}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   </TouchableOpacity>
@@ -171,10 +255,26 @@ const CategoryChip: React.FC<{
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function ExploreScreen() {
-  const handleProgramPress = (program: typeof FEATURED_PROGRAMS[0]) => {
-    Alert.alert(program.title, `${program.description}\n\nDuration: ${program.duration}\nCalories: ~${program.calories} kcal`, [
+  const addRoutine = useStore((s) => s.addRoutine);
+  const { show: showToast, ToastComponent } = useToast();
+
+  // Track which program IDs have been saved (session-local; persists via store)
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+
+  const handleSaveToRoutines = (program: typeof FEATURED_PROGRAMS[0]) => {
+    const routine = programToRoutine(program);
+    addRoutine(routine);
+    setSavedIds((prev) => new Set(prev).add(program.id));
+    showToast(`✅ "${program.title}" saved to Routines!`);
+  };
+
+  const handleStartProgram = (program: typeof FEATURED_PROGRAMS[0]) => {
+    Alert.alert(program.title, `${program.description}\n\nDuration: ${program.duration} min\nCalories: ~${program.calories} kcal`, [
       { text: 'Start Now', onPress: () => {} },
-      { text: 'Save to Routines', onPress: () => {} },
+      {
+        text: 'Save to Routines',
+        onPress: () => handleSaveToRoutines(program),
+      },
       { text: 'Cancel', style: 'cancel' },
     ]);
   };
@@ -185,21 +285,15 @@ export default function ExploreScreen() {
       <View style={styles.header}>
         <View>
           <Text variant="h2">Explore</Text>
-          <Text color="secondary" style={{ marginTop: 2 }}>
-            Discover workouts & exercises
-          </Text>
+          <Text color="secondary" style={{ marginTop: 2 }}>Discover workouts & exercises</Text>
         </View>
         <TouchableOpacity style={styles.searchBtn}>
           <Ionicons name="search" size={20} color={Colors.textSecondary} />
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* ── AI Smart Trainer Card ── */}
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* AI Smart Trainer */}
         <Card style={styles.aiCard} glowing>
           <View style={styles.aiCardInner}>
             <View style={styles.aiLeft}>
@@ -219,40 +313,37 @@ export default function ExploreScreen() {
                   variant="primary"
                   size="sm"
                   style={{ marginTop: Spacing.md, alignSelf: 'flex-start' }}
-                  onPress={() =>
-                    Alert.alert('🤖 Smart Trainer AI', 'Upgrade to Pro to unlock AI-powered personalized workout plans!')
-                  }
+                  onPress={() => Alert.alert('🤖 Smart Trainer AI', 'Upgrade to Pro to unlock AI-powered personalized workout plans!')}
                 />
               </View>
             </View>
           </View>
         </Card>
 
-        {/* ── Featured Programs ── */}
+        {/* Featured Programs */}
         <View style={styles.sectionHeader}>
           <Text variant="h4">Featured Programs</Text>
           <TouchableOpacity>
-            <Text color="accent" style={{ fontSize: FontSize.sm }}>
-              See all
-            </Text>
+            <Text color="accent" style={{ fontSize: FontSize.sm }}>See all</Text>
           </TouchableOpacity>
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.horizontalScroll}
-        >
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
           {FEATURED_PROGRAMS.map((p) => (
-            <ProgramCard key={p.id} program={p} onPress={() => handleProgramPress(p)} />
+            <ProgramCard
+              key={p.id}
+              program={p}
+              saved={savedIds.has(p.id)}
+              onStart={() => handleStartProgram(p)}
+              onSave={() => handleSaveToRoutines(p)}
+            />
           ))}
         </ScrollView>
 
-        {/* ── Quick Workouts ── */}
+        {/* Quick Workouts */}
         <View style={styles.sectionHeader}>
           <Text variant="h4">Quick Workouts</Text>
         </View>
-
         <View style={styles.quickWorkoutsGrid}>
           {QUICK_WORKOUTS.map((w) => (
             <TouchableOpacity
@@ -262,26 +353,19 @@ export default function ExploreScreen() {
               onPress={() => Alert.alert(w.name, `${w.time} • ${w.level}`)}
             >
               <Text style={{ fontSize: 28, marginBottom: Spacing.xs }}>{w.emoji}</Text>
-              <Text semibold style={{ fontSize: FontSize.sm }}>
-                {w.name}
-              </Text>
-              <Text color="muted" style={{ fontSize: FontSize.xs }}>
-                {w.time}
-              </Text>
+              <Text semibold style={{ fontSize: FontSize.sm }}>{w.name}</Text>
+              <Text color="muted" style={{ fontSize: FontSize.xs }}>{w.time}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* ── Browse by Muscle ── */}
+        {/* Browse by Muscle */}
         <View style={styles.sectionHeader}>
           <Text variant="h4">Browse by Muscle</Text>
           <TouchableOpacity>
-            <Text color="accent" style={{ fontSize: FontSize.sm }}>
-              All exercises
-            </Text>
+            <Text color="accent" style={{ fontSize: FontSize.sm }}>All exercises</Text>
           </TouchableOpacity>
         </View>
-
         <View style={styles.categoriesGrid}>
           {EXERCISE_CATEGORIES.map((cat) => (
             <CategoryChip
@@ -292,14 +376,12 @@ export default function ExploreScreen() {
           ))}
         </View>
 
-        {/* ── Personal Trainer upsell ── */}
+        {/* Personal Trainer upsell */}
         <Card style={styles.trainerCard} premium>
           <View style={styles.trainerInner}>
             <Text style={{ fontSize: 36 }}>👨‍💼</Text>
             <View style={{ flex: 1, marginLeft: Spacing.md }}>
-              <Text variant="h4" style={{ marginBottom: 4 }}>
-                Work with a Trainer
-              </Text>
+              <Text variant="h4" style={{ marginBottom: 4 }}>Work with a Trainer</Text>
               <Text color="secondary" style={{ fontSize: FontSize.sm, lineHeight: 18 }}>
                 Connect with certified personal trainers for custom programs and coaching.
               </Text>
@@ -314,6 +396,9 @@ export default function ExploreScreen() {
           </View>
         </Card>
       </ScrollView>
+
+      {/* Toast */}
+      <ToastComponent />
     </SafeAreaView>
   );
 }
@@ -321,126 +406,83 @@ export default function ExploreScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.md,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: Spacing.md,
   },
   searchBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.bgCard,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
+    width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.bgCard,
+    alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Colors.border,
   },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: Spacing['6xl'] },
-
-  // AI Card
   aiCard: { marginHorizontal: Spacing.lg, marginBottom: Spacing.xl },
   aiCardInner: { flexDirection: 'row' },
   aiLeft: { flexDirection: 'row', gap: Spacing.md, flex: 1 },
   aiIconWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.accentGlow,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 52, height: 52, borderRadius: Radius.md,
+    backgroundColor: Colors.accentGlow, alignItems: 'center', justifyContent: 'center',
   },
   aiHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
   aiSubtext: { fontSize: FontSize.sm, lineHeight: 18 },
-
-  // Section header
   sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.md,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg, marginBottom: Spacing.md,
   },
-
-  // Program cards (horizontal)
   horizontalScroll: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.sm },
-  programCard: { width: 260, marginRight: Spacing.md },
+  programCard: { width: 270, marginRight: Spacing.md },
   programCardBg: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    overflow: 'hidden',
-    ...Shadow.card,
+    backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
+    borderWidth: 1, overflow: 'hidden', ...Shadow.card,
   },
   programCardTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md,
   },
   programEmoji: { fontSize: 36 },
   programCardContent: { padding: Spacing.lg },
   programStats: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md, marginBottom: Spacing.md },
   programStat: { flexDirection: 'row', alignItems: 'center' },
+  programActions: { flexDirection: 'row', gap: Spacing.sm, alignItems: 'center' },
   programStartBtn: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: Radius.md,
-    alignItems: 'center',
+    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm,
+    borderRadius: Radius.md, alignItems: 'center',
   },
-
-  // Quick workouts grid
+  saveBtn: {
+    width: 40, height: 40, borderRadius: Radius.md,
+    backgroundColor: Colors.bgCard2, borderWidth: 1, borderColor: Colors.border,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  saveBtnActive: {
+    borderColor: Colors.accent, backgroundColor: Colors.accentGlow2,
+  },
   quickWorkoutsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: Spacing.lg,
-    gap: Spacing.md,
-    marginBottom: Spacing.xl,
+    flexDirection: 'row', flexWrap: 'wrap',
+    paddingHorizontal: Spacing.lg, gap: Spacing.md, marginBottom: Spacing.xl,
   },
   quickCard: {
-    flex: 1,
-    minWidth: (SCREEN_W - Spacing.lg * 2 - Spacing.md) / 2,
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: 'center',
+    flex: 1, minWidth: (SCREEN_W - Spacing.lg * 2 - Spacing.md) / 2,
+    backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
+    padding: Spacing.lg, borderWidth: 1, borderColor: Colors.border, alignItems: 'center',
   },
-
-  // Category chips
   categoriesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: Spacing.lg,
-    gap: Spacing.md,
-    marginBottom: Spacing.xl,
+    flexDirection: 'row', flexWrap: 'wrap',
+    paddingHorizontal: Spacing.lg, gap: Spacing.md, marginBottom: Spacing.xl,
   },
   categoryChip: {
-    flex: 1,
-    minWidth: (SCREEN_W - Spacing.lg * 2 - Spacing.md) / 2,
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    gap: Spacing.xs,
+    flex: 1, minWidth: (SCREEN_W - Spacing.lg * 2 - Spacing.md) / 2,
+    backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
+    padding: Spacing.md, borderWidth: 1, borderColor: Colors.border,
+    alignItems: 'center', gap: Spacing.xs,
   },
   categoryIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: Radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.xs,
+    width: 48, height: 48, borderRadius: Radius.md,
+    alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.xs,
   },
-
-  // Trainer card
   trainerCard: { marginHorizontal: Spacing.lg, marginBottom: Spacing.xl },
   trainerInner: { flexDirection: 'row', alignItems: 'flex-start' },
+  toast: {
+    position: 'absolute', bottom: 30, alignSelf: 'center',
+    backgroundColor: Colors.accent, paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm, borderRadius: Radius.full, ...Shadow.accentGlow,
+  },
 });

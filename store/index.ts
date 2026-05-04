@@ -1,10 +1,13 @@
 /**
  * SmartGym — Global Zustand store
- * Manages routines, workout sessions, history, measures, and app state
+ * Manages routines, workout sessions, history, measures, and app state.
+ * Persisted to AsyncStorage via zustand/middleware's `persist` adapter.
  */
 
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -110,7 +113,7 @@ interface SmartGymState {
   // Routines
   routines: Routine[];
 
-  // Active workout
+  // Active workout (runtime only — not persisted)
   activeWorkout: ActiveWorkout | null;
 
   // History
@@ -149,6 +152,7 @@ interface SmartGymState {
   // History
   addSession: (session: WorkoutSession) => void;
   deleteSession: (id: string) => void;
+  clearHistory: () => void; // ← NEW: wipe all sessions
 
   // Measures
   addMeasure: (measure: BodyMeasure) => void;
@@ -171,7 +175,7 @@ const initialSettings: AppSettings = {
   language: 'en',
 };
 
-// Sample routines for demo
+// Sample routines — only used on first ever launch (before persist kicks in)
 const sampleRoutines: Routine[] = [
   {
     id: 'push_day',
@@ -194,236 +198,274 @@ const sampleRoutines: Routine[] = [
 // ─── Store ────────────────────────────────────────────────────────────────────
 
 export const useStore = create<SmartGymState>()(
-  immer((set, get) => ({
-    // ── State ──
-    settings: initialSettings,
-    isFirstLaunch: true,
-    isTourVisible: false,
-    tourStep: 0,
-    routines: sampleRoutines,
-    activeWorkout: null,
-    sessions: [],
-    measures: [],
+  persist(
+    immer((set, get) => ({
+      // ── State ──
+      settings: initialSettings,
+      isFirstLaunch: true,
+      isTourVisible: false,
+      tourStep: 0,
+      routines: sampleRoutines,
+      activeWorkout: null,
+      sessions: [],
+      measures: [],
 
-    // ── Settings ──
-    updateSettings: (updates) =>
-      set((state) => {
-        Object.assign(state.settings, updates);
-      }),
+      // ── Settings ──
+      updateSettings: (updates) =>
+        set((state) => {
+          Object.assign(state.settings, updates);
+        }),
 
-    setFirstLaunch: (value) =>
-      set((state) => {
-        state.isFirstLaunch = value;
-      }),
+      setFirstLaunch: (value) =>
+        set((state) => {
+          state.isFirstLaunch = value;
+        }),
 
-    startTour: () =>
-      set((state) => {
-        state.isTourVisible = true;
-        state.tourStep = 0;
-      }),
+      startTour: () =>
+        set((state) => {
+          state.isTourVisible = true;
+          state.tourStep = 0;
+        }),
 
-    endTour: () =>
-      set((state) => {
-        state.isTourVisible = false;
-        state.tourStep = 0;
-        state.settings.showTour = false;
-      }),
+      endTour: () =>
+        set((state) => {
+          state.isTourVisible = false;
+          state.tourStep = 0;
+          state.settings.showTour = false;
+        }),
 
-    nextTourStep: () =>
-      set((state) => {
-        state.tourStep += 1;
-      }),
+      nextTourStep: () =>
+        set((state) => {
+          state.tourStep += 1;
+        }),
 
-    setTourStep: (step) =>
-      set((state) => {
-        state.tourStep = step;
-      }),
+      setTourStep: (step) =>
+        set((state) => {
+          state.tourStep = step;
+        }),
 
-    // ── Routines ──
-    addRoutine: (routine) =>
-      set((state) => {
-        state.routines.push(routine);
-      }),
+      // ── Routines ──
+      addRoutine: (routine) =>
+        set((state) => {
+          state.routines.push(routine);
+        }),
 
-    updateRoutine: (id, updates) =>
-      set((state) => {
-        const idx = state.routines.findIndex((r) => r.id === id);
-        if (idx !== -1) Object.assign(state.routines[idx], updates);
-      }),
+      updateRoutine: (id, updates) =>
+        set((state) => {
+          const idx = state.routines.findIndex((r) => r.id === id);
+          if (idx !== -1) Object.assign(state.routines[idx], updates);
+        }),
 
-    deleteRoutine: (id) =>
-      set((state) => {
-        state.routines = state.routines.filter((r) => r.id !== id);
-      }),
+      deleteRoutine: (id) =>
+        set((state) => {
+          state.routines = state.routines.filter((r) => r.id !== id);
+        }),
 
-    duplicateRoutine: (id) =>
-      set((state) => {
-        const routine = state.routines.find((r) => r.id === id);
-        if (routine) {
-          state.routines.push({
-            ...routine,
-            id: Date.now().toString(),
-            name: `${routine.name} (Copy)`,
-            createdAt: new Date().toISOString(),
-            lastPerformed: undefined,
+      duplicateRoutine: (id) =>
+        set((state) => {
+          const routine = state.routines.find((r) => r.id === id);
+          if (routine) {
+            state.routines.push({
+              ...routine,
+              id: Date.now().toString(),
+              name: `${routine.name} (Copy)`,
+              createdAt: new Date().toISOString(),
+              lastPerformed: undefined,
+            });
+          }
+        }),
+
+      // ── Workout ──
+      startWorkout: (input) => {
+        const isRoutine = 'exercises' in input && !Array.isArray((input as any).exercises[0]?.sets);
+        if (isRoutine && 'id' in input) {
+          const routine = input as Routine;
+          const exercises: ExerciseLog[] = routine.exercises.map((e) => ({
+            exerciseId: e.exerciseId,
+            exerciseName: e.exerciseName,
+            sets: Array.from({ length: e.sets }, (_, i) => ({
+              id: `${Date.now()}-${i}`,
+              weight: e.weight ?? 0,
+              reps: e.reps ?? 0,
+              completed: false,
+            })),
+          }));
+
+          set((state) => {
+            state.activeWorkout = {
+              routineId: routine.id,
+              routineName: routine.name,
+              startedAt: new Date().toISOString(),
+              exercises,
+              currentExerciseIndex: 0,
+              currentSetIndex: 0,
+              isResting: false,
+              restSecondsLeft: 0,
+              elapsedSeconds: 0,
+            };
           });
-        }
-      }),
 
-    // ── Workout ──
-    startWorkout: (input) => {
-      const isRoutine = 'exercises' in input && !Array.isArray((input as any).exercises[0]?.sets);
-      if (isRoutine && 'id' in input) {
-        const routine = input as Routine;
-        const exercises: ExerciseLog[] = routine.exercises.map((e) => ({
-          exerciseId: e.exerciseId,
-          exerciseName: e.exerciseName,
-          sets: Array.from({ length: e.sets }, (_, i) => ({
-            id: `${Date.now()}-${i}`,
-            weight: e.weight ?? 0,
-            reps: e.reps ?? 0,
-            completed: false,
-          })),
-        }));
+          // Mark routine as last performed
+          get().updateRoutine(routine.id, { lastPerformed: new Date().toISOString() });
+        }
+      },
+
+      updateSet: (exerciseIndex, setIndex, data) =>
+        set((state) => {
+          if (state.activeWorkout) {
+            Object.assign(state.activeWorkout.exercises[exerciseIndex].sets[setIndex], data);
+          }
+        }),
+
+      addSet: (exerciseIndex) =>
+        set((state) => {
+          if (state.activeWorkout) {
+            const exercise = state.activeWorkout.exercises[exerciseIndex];
+            const lastSet = exercise.sets[exercise.sets.length - 1];
+            exercise.sets.push({
+              id: Date.now().toString(),
+              weight: lastSet?.weight ?? 0,
+              reps: lastSet?.reps ?? 0,
+              completed: false,
+            });
+          }
+        }),
+
+      nextExercise: () =>
+        set((state) => {
+          if (state.activeWorkout) {
+            state.activeWorkout.currentExerciseIndex += 1;
+            state.activeWorkout.currentSetIndex = 0;
+          }
+        }),
+
+      finishWorkout: () => {
+        const workout = get().activeWorkout;
+        if (!workout) return;
+
+        const finishedAt = new Date().toISOString();
+        const totalSets = workout.exercises.reduce(
+          (acc, e) => acc + e.sets.filter((s) => s.completed).length,
+          0
+        );
+        const totalVolume = workout.exercises.reduce(
+          (acc, e) =>
+            acc + e.sets.filter((s) => s.completed).reduce((a, s) => a + s.weight * s.reps, 0),
+          0
+        );
+
+        const session: WorkoutSession = {
+          id: Date.now().toString(),
+          routineId: workout.routineId,
+          routineName: workout.routineName,
+          startedAt: workout.startedAt,
+          finishedAt,
+          duration: workout.elapsedSeconds,
+          exercises: workout.exercises,
+          totalVolume,
+          totalSets,
+        };
 
         set((state) => {
-          state.activeWorkout = {
-            routineId: routine.id,
-            routineName: routine.name,
-            startedAt: new Date().toISOString(),
-            exercises,
-            currentExerciseIndex: 0,
-            currentSetIndex: 0,
-            isResting: false,
-            restSecondsLeft: 0,
-            elapsedSeconds: 0,
-          };
+          state.sessions.unshift(session);
+          state.activeWorkout = null;
         });
+      },
 
-        // Mark routine as last performed
-        get().updateRoutine(routine.id, { lastPerformed: new Date().toISOString() });
-      }
-    },
+      cancelWorkout: () =>
+        set((state) => {
+          state.activeWorkout = null;
+        }),
 
-    updateSet: (exerciseIndex, setIndex, data) =>
-      set((state) => {
-        if (state.activeWorkout) {
-          Object.assign(state.activeWorkout.exercises[exerciseIndex].sets[setIndex], data);
-        }
+      updateElapsed: (seconds) =>
+        set((state) => {
+          if (state.activeWorkout) {
+            state.activeWorkout.elapsedSeconds = seconds;
+          }
+        }),
+
+      startRest: (seconds) =>
+        set((state) => {
+          if (state.activeWorkout) {
+            state.activeWorkout.isResting = true;
+            state.activeWorkout.restSecondsLeft = seconds;
+          }
+        }),
+
+      skipRest: () =>
+        set((state) => {
+          if (state.activeWorkout) {
+            state.activeWorkout.isResting = false;
+            state.activeWorkout.restSecondsLeft = 0;
+          }
+        }),
+
+      // ── History ──
+      addSession: (session) =>
+        set((state) => {
+          state.sessions.unshift(session);
+        }),
+
+      deleteSession: (id) =>
+        set((state) => {
+          state.sessions = state.sessions.filter((s) => s.id !== id);
+        }),
+
+      /** Wipe all workout history */
+      clearHistory: () =>
+        set((state) => {
+          state.sessions = [];
+        }),
+
+      // ── Measures ──
+      addMeasure: (measure) =>
+        set((state) => {
+          state.measures.unshift(measure);
+        }),
+
+      updateMeasure: (id, updates) =>
+        set((state) => {
+          const idx = state.measures.findIndex((m) => m.id === id);
+          if (idx !== -1) Object.assign(state.measures[idx], updates);
+        }),
+
+      deleteMeasure: (id) =>
+        set((state) => {
+          state.measures = state.measures.filter((m) => m.id !== id);
+        }),
+    })),
+    {
+      name: 'smartgym-store-v1', // AsyncStorage key
+      storage: createJSONStorage(() => AsyncStorage),
+      version: 1,
+
+      /**
+       * Only persist data that should survive app restarts.
+       * Exclude transient UI/runtime state: activeWorkout, isTourVisible, tourStep.
+       */
+      partialize: (state) => ({
+        routines: state.routines,
+        sessions: state.sessions,
+        measures: state.measures,
+        settings: state.settings,
+        isFirstLaunch: state.isFirstLaunch,
       }),
 
-    addSet: (exerciseIndex) =>
-      set((state) => {
-        if (state.activeWorkout) {
-          const exercise = state.activeWorkout.exercises[exerciseIndex];
-          const lastSet = exercise.sets[exercise.sets.length - 1];
-          exercise.sets.push({
-            id: Date.now().toString(),
-            weight: lastSet?.weight ?? 0,
-            reps: lastSet?.reps ?? 0,
-            completed: false,
-          });
-        }
-      }),
-
-    nextExercise: () =>
-      set((state) => {
-        if (state.activeWorkout) {
-          state.activeWorkout.currentExerciseIndex += 1;
-          state.activeWorkout.currentSetIndex = 0;
-        }
-      }),
-
-    finishWorkout: () => {
-      const workout = get().activeWorkout;
-      if (!workout) return;
-
-      const finishedAt = new Date().toISOString();
-      const totalSets = workout.exercises.reduce(
-        (acc, e) => acc + e.sets.filter((s) => s.completed).length,
-        0
-      );
-      const totalVolume = workout.exercises.reduce(
-        (acc, e) =>
-          acc + e.sets.filter((s) => s.completed).reduce((a, s) => a + s.weight * s.reps, 0),
-        0
-      );
-
-      const session: WorkoutSession = {
-        id: Date.now().toString(),
-        routineId: workout.routineId,
-        routineName: workout.routineName,
-        startedAt: workout.startedAt,
-        finishedAt,
-        duration: workout.elapsedSeconds,
-        exercises: workout.exercises,
-        totalVolume,
-        totalSets,
-      };
-
-      set((state) => {
-        state.sessions.unshift(session);
-        state.activeWorkout = null;
-      });
-    },
-
-    cancelWorkout: () =>
-      set((state) => {
-        state.activeWorkout = null;
-      }),
-
-    updateElapsed: (seconds) =>
-      set((state) => {
-        if (state.activeWorkout) {
-          state.activeWorkout.elapsedSeconds = seconds;
-        }
-      }),
-
-    startRest: (seconds) =>
-      set((state) => {
-        if (state.activeWorkout) {
-          state.activeWorkout.isResting = true;
-          state.activeWorkout.restSecondsLeft = seconds;
-        }
-      }),
-
-    skipRest: () =>
-      set((state) => {
-        if (state.activeWorkout) {
-          state.activeWorkout.isResting = false;
-          state.activeWorkout.restSecondsLeft = 0;
-        }
-      }),
-
-    // ── History ──
-    addSession: (session) =>
-      set((state) => {
-        state.sessions.unshift(session);
-      }),
-
-    deleteSession: (id) =>
-      set((state) => {
-        state.sessions = state.sessions.filter((s) => s.id !== id);
-      }),
-
-    // ── Measures ──
-    addMeasure: (measure) =>
-      set((state) => {
-        state.measures.unshift(measure);
-      }),
-
-    updateMeasure: (id, updates) =>
-      set((state) => {
-        const idx = state.measures.findIndex((m) => m.id === id);
-        if (idx !== -1) Object.assign(state.measures[idx], updates);
-      }),
-
-    deleteMeasure: (id) =>
-      set((state) => {
-        state.measures = state.measures.filter((m) => m.id !== id);
-      }),
-  }))
+      /**
+       * Version migration — increment `version` and add cases here
+       * when the persisted shape changes in a breaking way.
+       */
+      migrate: (persistedState: any, fromVersion: number) => {
+        // v0 → v1: no breaking changes, just pass through
+        return persistedState as SmartGymState;
+      },
+    }
+  )
 );
+
+// ─── Hydration helper ────────────────────────────────────────────────────────
+// Call this in components to know when AsyncStorage data has been loaded.
+export const useStoreHydrated = () => useStore.persist.hasHydrated();
 
 // ─── Selectors ────────────────────────────────────────────────────────────────
 

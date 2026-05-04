@@ -1,9 +1,10 @@
 /**
- * Root layout — sets up providers, fonts, splash screen, and guided tour
+ * Root layout — sets up providers, fonts, splash screen, and guided tour.
+ * Waits for Zustand persist hydration before rendering screens.
  */
 
-import React, { useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -20,18 +21,30 @@ export default function RootLayout() {
   const setFirstLaunch = useStore(s => s.setFirstLaunch);
   const updateSettings = useStore(s => s.updateSettings);
 
+  // Wait for zustand/persist to rehydrate from AsyncStorage before rendering tabs.
+  // This prevents the empty-state flash that occurs when sessions/routines load asynchronously.
+  const [hydrated, setHydrated] = useState(false);
+
   useEffect(() => {
-    checkFirstLaunch();
+    // useStore.persist.hasHydrated() may already be true if rehydration is fast
+    if (useStore.persist.hasHydrated()) {
+      setHydrated(true);
+      checkFirstLaunch();
+    } else {
+      const unsub = useStore.persist.onFinishHydration(() => {
+        setHydrated(true);
+        checkFirstLaunch();
+      });
+      return () => unsub();
+    }
   }, []);
 
   const checkFirstLaunch = async () => {
     try {
       const value = await AsyncStorage.getItem(FIRST_LAUNCH_KEY);
       if (value === null) {
-        // First launch — show tour
         await AsyncStorage.setItem(FIRST_LAUNCH_KEY, 'done');
         setFirstLaunch(true);
-        // Small delay so screens are mounted
         setTimeout(() => startTour(), 800);
       } else {
         setFirstLaunch(false);
@@ -41,6 +54,15 @@ export default function RootLayout() {
       console.log('AsyncStorage error:', e);
     }
   };
+
+  // Splash-like loading screen while store rehydrates from AsyncStorage
+  if (!hydrated) {
+    return (
+      <View style={styles.loadingScreen}>
+        <ActivityIndicator size="large" color={Colors.accent} />
+      </View>
+    );
+  }
 
   return (
     <GestureHandlerRootView style={styles.root}>
@@ -86,8 +108,9 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: Colors.bg,
+  root: { flex: 1, backgroundColor: Colors.bg },
+  loadingScreen: {
+    flex: 1, backgroundColor: Colors.bg,
+    alignItems: 'center', justifyContent: 'center',
   },
 });
