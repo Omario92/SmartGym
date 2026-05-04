@@ -5,6 +5,7 @@ A **premium, production-ready fitness tracking app** built with Expo SDK 55 + Re
 ## ✨ Features
 
 - **Full Routine Builder** — Create workouts with exercises, sets, reps, weight, rest timers
+- **1RM Calculator** — Integrated calculator for One-Rep Max with safety percentages (v2.0.0)
 - **v1.5 Premium Exercise Library** — 35+ high-quality exercises with high-resolution images
 - **Advanced Search & Filter** — Deep filtering by muscle, difficulty, and equipment
 - **Custom Exercise System** — Create and manage your own custom exercises
