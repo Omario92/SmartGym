@@ -14,7 +14,7 @@ import {
   Dimensions,
   Animated,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, Redirect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/lib/theme';
@@ -22,7 +22,9 @@ import { Text } from '@/components/ui/Text';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { ProgressRing } from '@/components/ui/ProgressRing';
-import { useStore, type SetLog } from '@/store';
+import { ExerciseImage } from '@/components/exercise/ExerciseImage';
+import { useStore, type SetLog, selectCustomExercises } from '@/store';
+import { findExerciseById } from '@/lib/exercises';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
@@ -138,15 +140,17 @@ const SetRow: React.FC<{
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function ActiveWorkoutScreen() {
-  const activeWorkout = useStore(s => s.activeWorkout);
-  const updateSet = useStore(s => s.updateSet);
-  const addSet = useStore(s => s.addSet);
-  const finishWorkout = useStore(s => s.finishWorkout);
-  const cancelWorkout = useStore(s => s.cancelWorkout);
-  const updateElapsed = useStore(s => s.updateElapsed);
-  const startRest = useStore(s => s.startRest);
-  const skipRest = useStore(s => s.skipRest);
-  const settings = useStore(s => s.settings);
+  const activeWorkout = useStore((s) => s.activeWorkout);
+  const updateSet = useStore((s) => s.updateSet);
+  const addSet = useStore((s) => s.addSet);
+  const finishWorkout = useStore((s) => s.finishWorkout);
+  const cancelWorkout = useStore((s) => s.cancelWorkout);
+  const updateElapsed = useStore((s) => s.updateElapsed);
+  const startRest = useStore((s) => s.startRest);
+  const skipRest = useStore((s) => s.skipRest);
+  const settings = useStore((s) => s.settings);
+  const customExercises = useStore(selectCustomExercises);
+  const insets = useSafeAreaInsets();
 
   const [restRemaining, setRestRemaining] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -245,8 +249,7 @@ export default function ActiveWorkoutScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <SafeAreaView style={{ flex: 1 }}>
+    <View style={[styles.container, { paddingTop: Math.max(insets.top, Spacing.md), paddingBottom: Math.max(insets.bottom, Spacing.md) }]}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={handleCancel} style={styles.cancelBtn}>
@@ -295,8 +298,19 @@ export default function ActiveWorkoutScreen() {
           >
             {activeWorkout.exercises.map((exercise, eIdx) => {
               const allSetsComplete = exercise.sets.every((s) => s.completed);
+              const exInfo = findExerciseById(exercise.exerciseId, customExercises);
               return (
                 <View key={`${exercise.exerciseId}-${eIdx}`} style={styles.exerciseSection}>
+                  {/* Exercise image */}
+                  {exInfo?.image && (
+                    <ExerciseImage
+                      uri={exInfo.image}
+                      width={SCREEN_W - Spacing.lg * 2}
+                      height={160}
+                      borderRadius={0}
+                      style={styles.exerciseSectionImage}
+                    />
+                  )}
                   {/* Exercise header */}
                   <View style={styles.exerciseHeader}>
                     <View style={styles.exerciseHeaderLeft}>
@@ -370,7 +384,6 @@ export default function ActiveWorkoutScreen() {
             />
           </ScrollView>
         )}
-      </SafeAreaView>
     </View>
   );
 }
@@ -422,6 +435,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     overflow: 'hidden',
+  },
+  exerciseSectionImage: {
+    width: '100%',
   },
   exerciseHeader: {
     flexDirection: 'row',

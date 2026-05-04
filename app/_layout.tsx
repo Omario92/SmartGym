@@ -98,6 +98,28 @@ export default function RootLayout() {
               presentation: 'fullScreenModal',
             }}
           />
+          <Stack.Screen
+            name="routine/add-custom-exercise"
+            options={{
+              headerShown: true,
+              headerTitle: 'Custom Exercise',
+              headerStyle: { backgroundColor: Colors.bgCard },
+              headerTintColor: Colors.textPrimary,
+              headerTitleStyle: { color: Colors.textPrimary, fontWeight: '600' },
+              presentation: 'modal',
+            }}
+          />
+          <Stack.Screen
+            name="workout/all-exercises"
+            options={{
+              headerShown: true,
+              headerTitle: 'All Exercises',
+              headerStyle: { backgroundColor: Colors.bg },
+              headerTintColor: Colors.textPrimary,
+              headerTitleStyle: { color: Colors.textPrimary, fontWeight: '600' },
+              presentation: 'modal',
+            }}
+          />
         </Stack>
 
         {/* Guided tour overlay — sits on top of everything */}

@@ -1,5 +1,7 @@
 /**
  * Create Routine Screen — Add exercises, configure sets/reps/weight
+ * v1.5: Tabbed exercise picker (All / My Exercises), exercise images,
+ *       "Create Custom Exercise" deep link.
  */
 
 import React, { useState } from 'react';
@@ -18,11 +20,17 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
-import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { useStore, type RoutineExercise } from '@/store';
-import { EXERCISES, MUSCLE_GROUPS, type Exercise } from '@/lib/exercises';
+import { ExerciseImage } from '@/components/exercise/ExerciseImage';
+import { CustomExerciseManager } from '@/components/exercise/CustomExerciseManager';
+import { useStore, selectCustomExercises, type RoutineExercise } from '@/store';
+import {
+  EXERCISES,
+  MUSCLE_GROUPS,
+  type Exercise,
+  type CustomExercise,
+} from '@/lib/exercises';
 
 const ROUTINE_COLORS = [
   '#00FF9D', '#FF6B6B', '#4DA6FF', '#FFB547',
@@ -31,19 +39,34 @@ const ROUTINE_COLORS = [
 
 // ─── Exercise Picker Modal ────────────────────────────────────────────────────
 
+type PickerTab = 'all' | 'mine';
+
 const ExercisePickerModal: React.FC<{
   visible: boolean;
   onClose: () => void;
   onSelect: (exercise: Exercise) => void;
 }> = ({ visible, onClose, onSelect }) => {
+  const [tab, setTab] = useState<PickerTab>('all');
   const [search, setSearch] = useState('');
   const [selectedMuscle, setSelectedMuscle] = useState<string | null>(null);
+  const customExercises = useStore(selectCustomExercises);
 
   const filtered = EXERCISES.filter((e) => {
     const matchSearch = search.length === 0 || e.name.toLowerCase().includes(search.toLowerCase());
     const matchMuscle = !selectedMuscle || e.muscleGroup === selectedMuscle;
     return matchSearch && matchMuscle;
   });
+
+  const handleNavigateCreate = () => {
+    onClose();
+    // Small delay so modal closes before pushing new screen
+    setTimeout(() => router.push('/routine/add-custom-exercise'), 300);
+  };
+
+  const handleEditCustom = (ex: CustomExercise) => {
+    onClose();
+    setTimeout(() => router.push(`/routine/add-custom-exercise?editId=${ex.id}`), 300);
+  };
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
@@ -56,90 +79,134 @@ const ExercisePickerModal: React.FC<{
           </TouchableOpacity>
         </View>
 
-        {/* Search */}
-        <View style={styles.pickerSearch}>
-          <Ionicons name="search" size={16} color={Colors.textMuted} />
-          <TextInput
-            style={styles.pickerSearchInput}
-            placeholder="Search exercises..."
-            placeholderTextColor={Colors.textMuted}
-            value={search}
-            onChangeText={setSearch}
-          />
+        {/* Tabs */}
+        <View style={styles.tabRow}>
+          {([['all', 'All Exercises'], ['mine', 'My Exercises']] as [PickerTab, string][]).map(
+            ([id, label]) => (
+              <TouchableOpacity
+                key={id}
+                style={[styles.tab, tab === id && styles.tabActive]}
+                onPress={() => setTab(id)}
+              >
+                <Text
+                  style={{
+                    fontSize: FontSize.sm,
+                    fontWeight: tab === id ? FontWeight.bold : FontWeight.regular,
+                    color: tab === id ? Colors.accent : Colors.textSecondary,
+                  }}
+                >
+                  {label}
+                  {id === 'mine' && customExercises.length > 0
+                    ? ` (${customExercises.length})`
+                    : ''}
+                </Text>
+              </TouchableOpacity>
+            )
+          )}
         </View>
 
-        {/* Muscle filter */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.muscleFilters}
-        >
-          <TouchableOpacity
-            style={[styles.muscleChip, !selectedMuscle && styles.muscleChipActive]}
-            onPress={() => setSelectedMuscle(null)}
-          >
-            <Text style={{ fontSize: FontSize.sm, color: !selectedMuscle ? '#000' : Colors.textSecondary }}>
-              All
-            </Text>
-          </TouchableOpacity>
-          {MUSCLE_GROUPS.map((m) => (
-            <TouchableOpacity
-              key={m.id}
-              style={[styles.muscleChip, selectedMuscle === m.id && styles.muscleChipActive]}
-              onPress={() => setSelectedMuscle(selectedMuscle === m.id ? null : m.id)}
-            >
-              <Text style={{ fontSize: FontSize.sm, color: selectedMuscle === m.id ? '#000' : Colors.textSecondary }}>
-                {m.icon} {m.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        {tab === 'mine' ? (
+          <CustomExerciseManager
+            onSelect={(ex) => { onSelect(ex); onClose(); }}
+            onCreateNew={handleNavigateCreate}
+            onEdit={handleEditCustom}
+          />
+        ) : (
+          <>
+            {/* Search */}
+            <View style={styles.pickerSearch}>
+              <Ionicons name="search" size={16} color={Colors.textMuted} />
+              <TextInput
+                style={styles.pickerSearchInput}
+                placeholder="Search exercises..."
+                placeholderTextColor={Colors.textMuted}
+                value={search}
+                onChangeText={setSearch}
+              />
+              {search.length > 0 && (
+                <TouchableOpacity onPress={() => setSearch('')}>
+                  <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
+                </TouchableOpacity>
+              )}
+            </View>
 
-        {/* Exercise list */}
-        <FlatList
-          data={filtered}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xxxl }}
-          ItemSeparatorComponent={() => <View style={{ height: Spacing.sm }} />}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.exerciseItem}
-              onPress={() => {
-                onSelect(item);
-                onClose();
-              }}
-              activeOpacity={0.8}
+            {/* Muscle filter */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.muscleFilters}
             >
-              <View style={styles.exerciseItemLeft}>
-                <Text semibold style={{ marginBottom: 2 }}>
-                  {item.name}
+              <TouchableOpacity
+                style={[styles.muscleChip, !selectedMuscle && styles.muscleChipActive]}
+                onPress={() => setSelectedMuscle(null)}
+              >
+                <Text style={{ fontSize: FontSize.sm, color: !selectedMuscle ? '#000' : Colors.textSecondary }}>
+                  All
                 </Text>
-                <Text color="muted" style={{ fontSize: FontSize.xs }}>
-                  {item.muscleGroup.replace('_', ' ')} •{' '}
-                  {item.equipment.replace('_', ' ')}
-                </Text>
-              </View>
-              <View style={styles.exerciseItemRight}>
-                <Badge
-                  label={item.difficulty}
-                  variant={
-                    item.difficulty === 'beginner'
-                      ? 'accent'
-                      : item.difficulty === 'intermediate'
-                      ? 'info'
-                      : 'error'
-                  }
-                />
-                <Ionicons
-                  name="add-circle"
-                  size={22}
-                  color={Colors.accent}
-                  style={{ marginLeft: Spacing.sm }}
-                />
-              </View>
-            </TouchableOpacity>
-          )}
-        />
+              </TouchableOpacity>
+              {MUSCLE_GROUPS.map((m) => (
+                <TouchableOpacity
+                  key={m.id}
+                  style={[styles.muscleChip, selectedMuscle === m.id && styles.muscleChipActive]}
+                  onPress={() => setSelectedMuscle(selectedMuscle === m.id ? null : m.id)}
+                >
+                  <Text style={{ fontSize: FontSize.sm, color: selectedMuscle === m.id ? '#000' : Colors.textSecondary }}>
+                    {m.icon} {m.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* Exercise list */}
+            <FlatList
+              data={filtered}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={{ paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xxxl }}
+              ItemSeparatorComponent={() => <View style={{ height: Spacing.sm }} />}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.exerciseItem}
+                  onPress={() => { onSelect(item); onClose(); }}
+                  activeOpacity={0.8}
+                >
+                  {/* Thumbnail */}
+                  <ExerciseImage
+                    uri={item.image}
+                    width={60}
+                    height={46}
+                    borderRadius={Radius.sm}
+                  />
+                  <View style={styles.exerciseItemLeft}>
+                    <Text semibold style={{ marginBottom: 2 }}>
+                      {item.name}
+                    </Text>
+                    <Text color="muted" style={{ fontSize: FontSize.xs }}>
+                      {item.muscleGroup.replace('_', ' ')} · {item.equipment.replace('_', ' ')}
+                    </Text>
+                  </View>
+                  <View style={styles.exerciseItemRight}>
+                    <Badge
+                      label={item.difficulty}
+                      variant={
+                        item.difficulty === 'beginner'
+                          ? 'accent'
+                          : item.difficulty === 'intermediate'
+                          ? 'info'
+                          : 'error'
+                      }
+                    />
+                    <Ionicons
+                      name="add-circle"
+                      size={22}
+                      color={Colors.accent}
+                      style={{ marginLeft: Spacing.sm }}
+                    />
+                  </View>
+                </TouchableOpacity>
+              )}
+            />
+          </>
+        )}
       </SafeAreaView>
     </Modal>
   );
@@ -149,12 +216,16 @@ const ExercisePickerModal: React.FC<{
 
 const ExerciseRow: React.FC<{
   exercise: RoutineExercise;
+  exerciseImage?: string;
   index: number;
-  onChange: (index: number, key: keyof RoutineExercise, value: any) => void;
+  onChange: (index: number, key: keyof RoutineExercise, value: string | number) => void;
   onRemove: (index: number) => void;
-}> = ({ exercise, index, onChange, onRemove }) => (
+}> = ({ exercise, exerciseImage, index, onChange, onRemove }) => (
   <View style={styles.exerciseRow}>
     <View style={styles.exerciseRowHeader}>
+      {exerciseImage && (
+        <ExerciseImage uri={exerciseImage} width={44} height={34} borderRadius={Radius.xs} />
+      )}
       <View style={styles.exerciseRowNum}>
         <Text color="accent" style={{ fontWeight: FontWeight.bold }}>
           {index + 1}
@@ -184,22 +255,14 @@ const ExerciseRow: React.FC<{
             placeholder={placeholder}
             placeholderTextColor={Colors.textMuted}
             keyboardType="numeric"
-            value={exercise[key as keyof RoutineExercise]?.toString() ?? ''}
-            onChangeText={(v) => onChange(index, key as keyof RoutineExercise, parseFloat(v) || 0)}
+            value={(exercise as unknown as Record<string, unknown>)[key]?.toString() ?? ''}
+            onChangeText={(v) =>
+              onChange(index, key as keyof RoutineExercise, parseFloat(v) || 0)
+            }
           />
         </View>
       ))}
     </View>
-
-    {exercise.note !== undefined && (
-      <TextInput
-        style={styles.noteInput}
-        placeholder="Exercise note (optional)..."
-        placeholderTextColor={Colors.textMuted}
-        value={exercise.note}
-        onChangeText={(v) => onChange(index, 'note', v)}
-      />
-    )}
   </View>
 );
 
@@ -207,12 +270,16 @@ const ExerciseRow: React.FC<{
 
 export default function CreateRoutineScreen() {
   const addRoutine = useStore((s) => s.addRoutine);
+  const customExercises = useStore(selectCustomExercises);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedColor, setSelectedColor] = useState(ROUTINE_COLORS[0]);
   const [exercises, setExercises] = useState<RoutineExercise[]>([]);
+  const [exerciseImages, setExerciseImages] = useState<Record<string, string>>({});
   const [showPicker, setShowPicker] = useState(false);
+
+  const allExercises = [...EXERCISES, ...customExercises];
 
   const handleAddExercise = (exercise: Exercise) => {
     setExercises((prev) => [
@@ -226,9 +293,14 @@ export default function CreateRoutineScreen() {
         restSeconds: 90,
       },
     ]);
+    setExerciseImages((prev) => ({ ...prev, [exercise.id]: exercise.image }));
   };
 
-  const handleChangeExercise = (index: number, key: keyof RoutineExercise, value: any) => {
+  const handleChangeExercise = (
+    index: number,
+    key: keyof RoutineExercise,
+    value: string | number
+  ) => {
     setExercises((prev) =>
       prev.map((e, i) => (i === index ? { ...e, [key]: value } : e))
     );
@@ -236,9 +308,13 @@ export default function CreateRoutineScreen() {
 
   const handleRemoveExercise = (index: number) => {
     Alert.alert('Remove Exercise', 'Remove this exercise from the routine?', [
-      { text: 'Remove', style: 'destructive', onPress: () => {
-        setExercises((prev) => prev.filter((_, i) => i !== index));
-      }},
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: () => {
+          setExercises((prev) => prev.filter((_, i) => i !== index));
+        },
+      },
       { text: 'Cancel', style: 'cancel' },
     ]);
   };
@@ -260,11 +336,13 @@ export default function CreateRoutineScreen() {
       color: selectedColor,
       exercises,
       createdAt: new Date().toISOString(),
-      estimatedDuration: Math.ceil(exercises.reduce((acc, e) => {
-        const setTime = 45; // avg seconds per set
-        const restTime = e.restSeconds ?? 90;
-        return acc + e.sets * (setTime + restTime);
-      }, 0) / 60),
+      estimatedDuration: Math.ceil(
+        exercises.reduce((acc, e) => {
+          const setTime = 45;
+          const restTime = e.restSeconds ?? 90;
+          return acc + e.sets * (setTime + restTime);
+        }, 0) / 60
+      ),
     });
 
     router.back();
@@ -354,6 +432,7 @@ export default function CreateRoutineScreen() {
             <ExerciseRow
               key={`${exercise.exerciseId}-${i}`}
               exercise={exercise}
+              exerciseImage={exerciseImages[exercise.exerciseId]}
               index={i}
               onChange={handleChangeExercise}
               onRemove={handleRemoveExercise}
@@ -410,7 +489,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xl,
   },
 
-  // Color picker
   colorRow: { flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.xl },
   colorSwatch: {
     width: 36,
@@ -426,7 +504,6 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1.15 }],
   },
 
-  // Exercises
   exercisesHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -459,7 +536,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  // Exercise row
   exerciseRow: {
     backgroundColor: Colors.bgCard,
     borderRadius: Radius.lg,
@@ -503,19 +579,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     minHeight: 40,
   },
-  noteInput: {
-    backgroundColor: Colors.bgInput,
-    borderRadius: Radius.sm,
-    margin: Spacing.md,
-    marginTop: 0,
-    padding: Spacing.sm,
-    color: Colors.textSecondary,
-    fontSize: FontSize.sm,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
 
-  // Save
   saveWrap: {
     padding: Spacing.lg,
     borderTopWidth: 1,
@@ -523,7 +587,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bg,
   },
 
-  // Exercise picker modal
+  // Picker
   pickerContainer: { flex: 1, backgroundColor: Colors.bgModal },
   pickerHeader: {
     flexDirection: 'row',
@@ -533,6 +597,19 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
+  tabRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabActive: { borderBottomColor: Colors.accent },
   pickerSearch: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -543,14 +620,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     gap: Spacing.sm,
+    height: 44,
   },
   pickerSearchInput: {
     flex: 1,
-    height: 44,
     color: Colors.textPrimary,
     fontSize: FontSize.md,
   },
-  muscleFilters: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md, gap: Spacing.sm },
+  muscleFilters: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.md,
+    gap: Spacing.sm,
+  },
   muscleChip: {
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
@@ -568,6 +649,7 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     borderWidth: 1,
     borderColor: Colors.border,
+    gap: Spacing.md,
   },
   exerciseItemLeft: { flex: 1 },
   exerciseItemRight: { flexDirection: 'row', alignItems: 'center' },

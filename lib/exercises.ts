@@ -1,6 +1,9 @@
 /**
- * Exercise library — 80+ exercises covering all muscle groups
+ * Exercise library — 40+ exercises covering all muscle groups
+ * v1.5: Added image, gif, and CustomExercise support
  */
+
+import { getExerciseImage } from './exerciseImages';
 
 export type MuscleGroup =
   | 'chest'
@@ -37,9 +40,23 @@ export interface Exercise {
   tips: string[];
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   isPopular?: boolean;
+  /** High-quality 16:9 image URL — populated automatically from exerciseImages.ts */
+  image: string;
+  /** Optional animated GIF for live workout demo */
+  gif?: string;
 }
 
-export const EXERCISES: Exercise[] = [
+/** Internal raw type used only in the EXERCISES literal array (image auto-populated below) */
+type RawExercise = Omit<Exercise, 'image'> & { image?: string };
+
+/** A user-created exercise extending the base Exercise type */
+export interface CustomExercise extends Exercise {
+  isCustom: true;
+  createdAt: string;
+  userId?: string;
+}
+
+const _EXERCISES: RawExercise[] = [
   // ── CHEST ──
   {
     id: 'bench_press',
@@ -551,6 +568,18 @@ export const EXERCISES: Exercise[] = [
   },
 ];
 
+/** Assign image URLs from the image map then expose as typed Exercise[] */
+_EXERCISES.forEach((ex) => {
+  if (!ex.image) {
+    ex.image = getExerciseImage(ex.id);
+  }
+});
+
+export const EXERCISES: Exercise[] = _EXERCISES as Exercise[];
+
+/** Default (built-in) exercises — same as EXERCISES, typed explicitly */
+export const defaultExercises: Exercise[] = EXERCISES;
+
 export const MUSCLE_GROUPS: { id: MuscleGroup; label: string; icon: string; color: string }[] = [
   { id: 'chest', label: 'Chest', icon: '💪', color: '#FF6B6B' },
   { id: 'back', label: 'Back', icon: '🏋️', color: '#4DA6FF' },
@@ -574,3 +603,21 @@ export const searchExercises = (query: string) =>
       e.name.toLowerCase().includes(query.toLowerCase()) ||
       e.muscleGroup.includes(query.toLowerCase())
   );
+
+/**
+ * Get all exercises (default + custom). Pass customExercises from the store.
+ * Use this everywhere exercises are displayed so custom ones appear too.
+ */
+export const getAllExercises = (customExercises: CustomExercise[]): Exercise[] => [
+  ...EXERCISES,
+  ...customExercises,
+];
+
+/**
+ * Find an exercise by ID across both default and custom lists.
+ */
+export const findExerciseById = (
+  id: string,
+  customExercises: CustomExercise[]
+): Exercise | undefined =>
+  EXERCISES.find((e) => e.id === id) ?? customExercises.find((e) => e.id === id);

@@ -5,12 +5,16 @@ A **premium, production-ready fitness tracking app** built with Expo SDK 55 + Re
 ## ✨ Features
 
 - **Full Routine Builder** — Create workouts with exercises, sets, reps, weight, rest timers
+- **v1.5 Premium Exercise Library** — 35+ high-quality exercises with high-resolution images
+- **Advanced Search & Filter** — Deep filtering by muscle, difficulty, and equipment
+- **Custom Exercise System** — Create and manage your own custom exercises
 - **Live Workout Session** — Set-by-set logging with auto rest timer and animated progress
 - **Guided Onboarding Tour** — 7-step spotlight tour on first launch
-- **Explore Tab** — Featured programs, quick workouts, browse by muscle group, AI trainer teaser
-- **History & Analytics** — Weekly heatmap, volume charts, awards system, monthly summary
-- **Body Measurements** — Track weight, body fat, and 7 body measurements with trend charts
-- **Premium Design** — Dark mode, neon green accent (#00FF9D), neon glows, fluid animations
+- **Explore Tab** — Featured programs, quick workouts, and browse by muscle group
+- **History & Analytics** — Weekly heatmap, volume charts, and monthly summary
+- **Body Measurements** — Track weight, body fat, and body measurements with trend charts
+- **Premium Design** — Dark mode, neon green accent (#00FF9D), and Dynamic Island support
+- **Store Persistence** — All your data is saved locally using Zustand + AsyncStorage
 
 ## 🚀 Quick Start
 
@@ -59,8 +63,12 @@ SmartGym/
 │   │   ├── create.tsx       # Create new routine (modal)
 │   │   └── [id].tsx         # Edit existing routine
 │   └── workout/
-│       └── active.tsx       # Live workout session (full-screen modal)
+│       ├── active.tsx       # Live workout session (full-screen modal)
+│       └── all-exercises.tsx # Premium Exercise Library (v1.5)
 ├── components/
+│   ├── exercise/
+│   │   ├── ExerciseImage.tsx # Shimmering image loader (v1.5)
+│   │   └── ExerciseDetailModal.tsx # Exercise detail view (v1.5)
 │   ├── tour/
 │   │   └── GuidedTour.tsx   # 7-step spotlight onboarding
 │   └── ui/

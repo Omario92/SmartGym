@@ -322,7 +322,10 @@ export default function HistoryScreen() {
               <Ionicons name="trash-outline" size={18} color={Colors.textSecondary} />
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={styles.headerBtn}>
+          <TouchableOpacity
+            style={styles.headerBtn}
+            onPress={() => Alert.alert('Calendar', 'The workout calendar and scheduling feature is coming soon!')}
+          >
             <Ionicons name="calendar-outline" size={18} color={Colors.textSecondary} />
           </TouchableOpacity>
         </View>

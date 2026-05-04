@@ -9,6 +9,7 @@ import {
   Dimensions, Alert, Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
@@ -154,10 +155,34 @@ const EXERCISE_CATEGORIES = [
 ];
 
 const QUICK_WORKOUTS = [
-  { id: 'pushups', name: '100 Push-ups', time: '15 min', level: 'Any', emoji: '💪' },
-  { id: 'abs', name: 'Ab Burner', time: '10 min', level: 'Any', emoji: '🎯' },
-  { id: 'squat', name: '1000 Squats', time: '20 min', level: 'Intermediate', emoji: '🦵' },
-  { id: 'yoga', name: 'Morning Stretch', time: '12 min', level: 'Beginner', emoji: '🧘' },
+  { id: 'pushups', name: '100 Push-ups', time: '15 min', level: 'Any', emoji: '💪',
+    color: '#00FF9D',
+    exercises: [
+      { exerciseId: 'push_ups', exerciseName: 'Push-Ups', sets: 5, reps: 20 },
+      { exerciseId: 'push_ups', exerciseName: 'Wide Push-Ups', sets: 5, reps: 20 },
+    ] as RoutineExercise[] },
+  { id: 'abs', name: 'Ab Burner', time: '10 min', level: 'Any', emoji: '🎯',
+    color: '#FFB547',
+    exercises: [
+      { exerciseId: 'crunches', exerciseName: 'Crunches', sets: 3, reps: 20 },
+      { exerciseId: 'leg_raises', exerciseName: 'Leg Raises', sets: 3, reps: 15 },
+      { exerciseId: 'plank', exerciseName: 'Plank (30s)', sets: 3, reps: 1 },
+      { exerciseId: 'bicycle_crunch', exerciseName: 'Bicycle Crunches', sets: 3, reps: 20 },
+    ] as RoutineExercise[] },
+  { id: 'squat', name: '1000 Squats', time: '20 min', level: 'Intermediate', emoji: '🦵',
+    color: '#4DA6FF',
+    exercises: [
+      { exerciseId: 'squat', exerciseName: 'Air Squats', sets: 10, reps: 50 },
+      { exerciseId: 'lunges', exerciseName: 'Lunges', sets: 5, reps: 20 },
+      { exerciseId: 'calf_raises', exerciseName: 'Calf Raises', sets: 5, reps: 30 },
+    ] as RoutineExercise[] },
+  { id: 'yoga', name: 'Morning Stretch', time: '12 min', level: 'Beginner', emoji: '🧘',
+    color: '#9B59B6',
+    exercises: [
+      { exerciseId: 'plank', exerciseName: 'Plank (Hold)', sets: 3, reps: 1 },
+      { exerciseId: 'mountain_climbers', exerciseName: 'Mountain Climbers (slow)', sets: 3, reps: 10 },
+      { exerciseId: 'lunges', exerciseName: 'Walking Lunges', sets: 2, reps: 10 },
+    ] as RoutineExercise[] },
 ];
 
 // ─── Convert program → Routine ────────────────────────────────────────────────
@@ -256,6 +281,7 @@ const CategoryChip: React.FC<{
 
 export default function ExploreScreen() {
   const addRoutine = useStore((s) => s.addRoutine);
+  const startWorkout = useStore((s) => s.startWorkout);
   const { show: showToast, ToastComponent } = useToast();
 
   // Track which program IDs have been saved (session-local; persists via store)
@@ -279,6 +305,31 @@ export default function ExploreScreen() {
     ]);
   };
 
+  const handleStartQuickWorkout = (w: typeof QUICK_WORKOUTS[0]) => {
+    Alert.alert(
+      w.emoji + ' ' + w.name,
+      `Duration: ${w.time}  •  Level: ${w.level}\n\nReady to start this quick workout?`,
+      [
+        {
+          text: 'Start Now 🚀',
+          onPress: () => {
+            startWorkout({
+              id: `quick_${w.id}_${Date.now()}`,
+              name: w.name,
+              description: `Quick ${w.time} workout`,
+              color: w.color,
+              exercises: w.exercises,
+              createdAt: new Date().toISOString(),
+              estimatedDuration: parseInt(w.time),
+            } as Routine);
+            router.push('/workout/active');
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
@@ -287,7 +338,10 @@ export default function ExploreScreen() {
           <Text variant="h2">Explore</Text>
           <Text color="secondary" style={{ marginTop: 2 }}>Discover workouts & exercises</Text>
         </View>
-        <TouchableOpacity style={styles.searchBtn}>
+        <TouchableOpacity
+          style={styles.searchBtn}
+          onPress={() => router.push('/workout/all-exercises')}
+        >
           <Ionicons name="search" size={20} color={Colors.textSecondary} />
         </TouchableOpacity>
       </View>
@@ -323,7 +377,7 @@ export default function ExploreScreen() {
         {/* Featured Programs */}
         <View style={styles.sectionHeader}>
           <Text variant="h4">Featured Programs</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/workout/all-exercises')}>
             <Text color="accent" style={{ fontSize: FontSize.sm }}>See all</Text>
           </TouchableOpacity>
         </View>
@@ -350,7 +404,7 @@ export default function ExploreScreen() {
               key={w.id}
               style={styles.quickCard}
               activeOpacity={0.85}
-              onPress={() => Alert.alert(w.name, `${w.time} • ${w.level}`)}
+              onPress={() => handleStartQuickWorkout(w)}
             >
               <Text style={{ fontSize: 28, marginBottom: Spacing.xs }}>{w.emoji}</Text>
               <Text semibold style={{ fontSize: FontSize.sm }}>{w.name}</Text>
@@ -362,7 +416,7 @@ export default function ExploreScreen() {
         {/* Browse by Muscle */}
         <View style={styles.sectionHeader}>
           <Text variant="h4">Browse by Muscle</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/workout/all-exercises')}>
             <Text color="accent" style={{ fontSize: FontSize.sm }}>All exercises</Text>
           </TouchableOpacity>
         </View>
@@ -371,7 +425,7 @@ export default function ExploreScreen() {
             <CategoryChip
               key={cat.id}
               cat={cat}
-              onPress={() => Alert.alert(cat.label, `${cat.count} ${cat.label.toLowerCase()} exercises`)}
+              onPress={() => router.push({ pathname: '/workout/all-exercises', params: { muscle: cat.id } })}
             />
           ))}
         </View>

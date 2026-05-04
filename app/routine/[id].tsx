@@ -1,3 +1,9 @@
+/**
+ * Routine Detail / Edit Screen
+ * v1.5: Fixed primaryMuscles bug, fixed updateRoutine signature,
+ *       added tabbed exercise picker with images + custom exercise support.
+ */
+
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -17,18 +23,30 @@ import { Text } from '@/components/ui/Text';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { Colors, Spacing, Radius } from '@/lib/theme';
+import { ExerciseImage } from '@/components/exercise/ExerciseImage';
+import { CustomExerciseManager } from '@/components/exercise/CustomExerciseManager';
+import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/lib/theme';
 import {
   useStore,
   selectRoutines,
-  RoutineExercise,
+  selectCustomExercises,
+  type RoutineExercise,
 } from '@/store';
-import { EXERCISES, MUSCLE_GROUPS, searchExercises, getExercisesByMuscle } from '@/lib/exercises';
+import {
+  EXERCISES,
+  MUSCLE_GROUPS,
+  searchExercises,
+  getExercisesByMuscle,
+  type Exercise,
+  type CustomExercise,
+} from '@/lib/exercises';
 
 const ROUTINE_COLORS = [
   '#00FF9D', '#6C63FF', '#FF6B6B', '#FFB347',
   '#4ECDC4', '#45B7D1', '#96CEB4', '#FF69B4',
 ];
+
+type PickerTab = 'all' | 'mine';
 
 // ─── Exercise Picker Modal ────────────────────────────────────────────────────
 function ExercisePicker({
@@ -38,16 +56,28 @@ function ExercisePicker({
 }: {
   visible: boolean;
   onClose: () => void;
-  onSelect: (exerciseId: string) => void;
+  onSelect: (exercise: Exercise) => void;
 }) {
+  const [tab, setTab] = useState<PickerTab>('all');
   const [query, setQuery] = useState('');
   const [selectedMuscle, setSelectedMuscle] = useState<string | null>(null);
+  const customExercises = useStore(selectCustomExercises);
 
   const filtered = query
     ? searchExercises(query)
     : selectedMuscle
-    ? getExercisesByMuscle(selectedMuscle as any)
+    ? getExercisesByMuscle(selectedMuscle as Exercise['muscleGroup'])
     : EXERCISES;
+
+  const handleNavigateCreate = () => {
+    onClose();
+    setTimeout(() => router.push('/routine/add-custom-exercise'), 300);
+  };
+
+  const handleEditCustom = (ex: CustomExercise) => {
+    onClose();
+    setTimeout(() => router.push(`/routine/add-custom-exercise?editId=${ex.id}`), 300);
+  };
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
@@ -60,82 +90,133 @@ function ExercisePicker({
           </TouchableOpacity>
         </View>
 
-        {/* Search */}
-        <View style={styles.searchBox}>
-          <Ionicons name="search-outline" size={18} color={Colors.textMuted} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search exercises..."
-            placeholderTextColor={Colors.textMuted}
-            value={query}
-            onChangeText={setQuery}
-            autoCapitalize="none"
-          />
-          {query.length > 0 && (
-            <TouchableOpacity onPress={() => setQuery('')}>
-              <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
-            </TouchableOpacity>
+        {/* Tabs */}
+        <View style={styles.tabRow}>
+          {([['all', 'All Exercises'], ['mine', 'My Exercises']] as [PickerTab, string][]).map(
+            ([id, label]) => (
+              <TouchableOpacity
+                key={id}
+                style={[styles.tab, tab === id && styles.tabActive]}
+                onPress={() => setTab(id)}
+              >
+                <Text
+                  style={{
+                    fontSize: FontSize.sm,
+                    fontWeight: tab === id ? FontWeight.bold : FontWeight.regular,
+                    color: tab === id ? Colors.accent : Colors.textSecondary,
+                  }}
+                >
+                  {label}
+                  {id === 'mine' && customExercises.length > 0
+                    ? ` (${customExercises.length})`
+                    : ''}
+                </Text>
+              </TouchableOpacity>
+            )
           )}
         </View>
 
-        {/* Muscle filter chips */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.chipRow}
-          contentContainerStyle={{ paddingHorizontal: Spacing.md }}
-        >
-          <TouchableOpacity
-            style={[styles.chip, !selectedMuscle && styles.chipActive]}
-            onPress={() => setSelectedMuscle(null)}
-          >
-            <Text variant="caption" color={!selectedMuscle ? 'accent' : 'secondary'}>All</Text>
-          </TouchableOpacity>
-          {MUSCLE_GROUPS.map(mg => (
-            <TouchableOpacity
-              key={mg.id}
-              style={[styles.chip, selectedMuscle === mg.id && styles.chipActive]}
-              onPress={() => setSelectedMuscle(mg.id === selectedMuscle ? null : mg.id)}
-            >
-              <Text variant="caption" color={selectedMuscle === mg.id ? 'accent' : 'secondary'}>
-                {mg.icon} {mg.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* Exercise list */}
-        <FlatList
-          data={filtered}
-          keyExtractor={item => item.id}
-          contentContainerStyle={{ padding: Spacing.md, paddingBottom: 40 }}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.exerciseRow}
-              onPress={() => { onSelect(item.id); onClose(); }}
-            >
-              <View style={styles.exerciseInfo}>
-                <Text variant="body" bold color="primary">{item.name}</Text>
-                <Text variant="caption" color="secondary">
-                  {item.primaryMuscles.join(', ')} · {item.equipment}
-                </Text>
-              </View>
-              <Badge
-                label={item.difficulty}
-                variant={
-                  item.difficulty === 'beginner' ? 'accent'
-                  : item.difficulty === 'intermediate' ? 'info'
-                  : 'warning'
-                }
+        {tab === 'mine' ? (
+          <CustomExerciseManager
+            onSelect={(ex) => { onSelect(ex); onClose(); }}
+            onCreateNew={handleNavigateCreate}
+            onEdit={handleEditCustom}
+          />
+        ) : (
+          <>
+            {/* Search */}
+            <View style={styles.searchBox}>
+              <Ionicons name="search-outline" size={18} color={Colors.textMuted} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search exercises..."
+                placeholderTextColor={Colors.textMuted}
+                value={query}
+                onChangeText={setQuery}
+                autoCapitalize="none"
               />
-            </TouchableOpacity>
-          )}
-          ListEmptyComponent={
-            <View style={{ alignItems: 'center', paddingTop: 40 }}>
-              <Text variant="body" color="tertiary">No exercises found</Text>
+              {query.length > 0 && (
+                <TouchableOpacity onPress={() => setQuery('')}>
+                  <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
+                </TouchableOpacity>
+              )}
             </View>
-          }
-        />
+
+            {/* Muscle filter chips */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.chipRow}
+              contentContainerStyle={{ paddingHorizontal: Spacing.md }}
+            >
+              <TouchableOpacity
+                style={[styles.chip, !selectedMuscle && styles.chipActive]}
+                onPress={() => setSelectedMuscle(null)}
+              >
+                <Text variant="caption" color={!selectedMuscle ? 'accent' : 'secondary'}>
+                  All
+                </Text>
+              </TouchableOpacity>
+              {MUSCLE_GROUPS.map((mg) => (
+                <TouchableOpacity
+                  key={mg.id}
+                  style={[styles.chip, selectedMuscle === mg.id && styles.chipActive]}
+                  onPress={() => setSelectedMuscle(mg.id === selectedMuscle ? null : mg.id)}
+                >
+                  <Text
+                    variant="caption"
+                    color={selectedMuscle === mg.id ? 'accent' : 'secondary'}
+                  >
+                    {mg.icon} {mg.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* Exercise list */}
+            <FlatList
+              data={filtered}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={{ padding: Spacing.md, paddingBottom: 40 }}
+              ItemSeparatorComponent={() => (
+                <View style={{ height: 1, backgroundColor: Colors.divider }} />
+              )}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.exerciseRow}
+                  onPress={() => { onSelect(item); onClose(); }}
+                >
+                  <ExerciseImage
+                    uri={item.image}
+                    width={52}
+                    height={40}
+                    borderRadius={Radius.xs}
+                  />
+                  <View style={styles.exerciseInfo}>
+                    <Text variant="body" bold color="primary">{item.name}</Text>
+                    <Text variant="caption" color="secondary">
+                      {/* FIXED: was item.primaryMuscles (didn't exist) */}
+                      {item.muscleGroup.replace('_', ' ')} · {item.equipment.replace('_', ' ')}
+                    </Text>
+                  </View>
+                  <Badge
+                    label={item.difficulty}
+                    variant={
+                      item.difficulty === 'beginner' ? 'accent'
+                      : item.difficulty === 'intermediate' ? 'info'
+                      : 'warning'
+                    }
+                  />
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={
+                <View style={{ alignItems: 'center', paddingTop: 40 }}>
+                  <Text variant="body" color="secondary">No exercises found</Text>
+                </View>
+              }
+            />
+          </>
+        )}
       </View>
     </Modal>
   );
@@ -145,10 +226,12 @@ function ExercisePicker({
 export default function RoutineDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const routines = useStore(selectRoutines);
-  const updateRoutine = useStore(s => s.updateRoutine);
-  const deleteRoutine = useStore(s => s.deleteRoutine);
+  const customExercises = useStore(selectCustomExercises);
+  const updateRoutine = useStore((s) => s.updateRoutine);
+  const deleteRoutine = useStore((s) => s.deleteRoutine);
 
-  const routine = routines.find(r => r.id === id);
+  const routine = routines.find((r) => r.id === id);
+  const allExercises: Exercise[] = [...EXERCISES, ...customExercises];
 
   const [name, setName] = useState(routine?.name ?? '');
   const [description, setDescription] = useState(routine?.description ?? '');
@@ -159,18 +242,16 @@ export default function RoutineDetailScreen() {
 
   const markDirty = () => setIsDirty(true);
 
-  const handleAddExercise = useCallback((exerciseId: string) => {
-    const ex = EXERCISES.find(e => e.id === exerciseId);
-    if (!ex) return;
+  const handleAddExercise = useCallback((exercise: Exercise) => {
     const newEx: RoutineExercise = {
-      exerciseId,
-      exerciseName: ex.name,
+      exerciseId: exercise.id,
+      exerciseName: exercise.name,
       sets: 3,
       reps: 10,
       weight: 0,
       restSeconds: 60,
     };
-    setExercises(prev => [...prev, newEx]);
+    setExercises((prev) => [...prev, newEx]);
     markDirty();
   }, []);
 
@@ -179,16 +260,17 @@ export default function RoutineDetailScreen() {
     field: keyof RoutineExercise,
     value: string | number
   ) => {
-    setExercises(prev => {
+    setExercises((prev) => {
       const copy = [...prev];
-      (copy[idx] as any)[field] = typeof value === 'string' ? Number(value) || 0 : value;
+      (copy[idx] as unknown as Record<string, unknown>)[field as string] =
+        typeof value === 'string' ? Number(value) || 0 : value;
       return copy;
     });
     markDirty();
   };
 
   const removeExercise = (idx: number) => {
-    setExercises(prev => prev.filter((_, i) => i !== idx));
+    setExercises((prev) => prev.filter((_, i) => i !== idx));
     markDirty();
   };
 
@@ -198,11 +280,12 @@ export default function RoutineDetailScreen() {
       return;
     }
     if (!routine) return;
-    const estimatedDuration = exercises.reduce((acc, ex) => {
-      return acc + ex.sets * (45 + ex.restSeconds);
-    }, 0);
-    updateRoutine({
-      ...routine,
+    const estimatedDuration = exercises.reduce(
+      (acc, ex) => acc + ex.sets * (45 + (ex.restSeconds ?? 60)),
+      0
+    );
+    // FIXED: was updateRoutine({...routine, ...}) — correct signature is (id, updates)
+    updateRoutine(routine.id, {
       name: name.trim(),
       description: description.trim(),
       color,
@@ -235,8 +318,12 @@ export default function RoutineDetailScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <Text variant="body" color="tertiary">Routine not found.</Text>
-          <Button label="Go Back" onPress={() => router.back()} style={{ marginTop: 16 }} />
+          <Text variant="body" color="secondary">Routine not found.</Text>
+          <Button
+            title="Go Back"
+            onPress={() => router.back()}
+            style={{ marginTop: 16 }}
+          />
         </View>
       </SafeAreaView>
     );
@@ -246,16 +333,19 @@ export default function RoutineDetailScreen() {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => {
-          if (isDirty) {
-            Alert.alert('Unsaved changes', 'Discard changes?', [
-              { text: 'Keep editing', style: 'cancel' },
-              { text: 'Discard', style: 'destructive', onPress: () => router.back() },
-            ]);
-          } else {
-            router.back();
-          }
-        }} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => {
+            if (isDirty) {
+              Alert.alert('Unsaved changes', 'Discard changes?', [
+                { text: 'Keep editing', style: 'cancel' },
+                { text: 'Discard', style: 'destructive', onPress: () => router.back() },
+              ]);
+            } else {
+              router.back();
+            }
+          }}
+          style={styles.backBtn}
+        >
           <Ionicons name="chevron-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
         <Text variant="h3" color="primary">Edit Routine</Text>
@@ -271,11 +361,13 @@ export default function RoutineDetailScreen() {
       >
         {/* Name */}
         <Card style={styles.section}>
-          <Text variant="label" color="secondary" style={{ marginBottom: 8 }}>ROUTINE NAME</Text>
+          <Text variant="label" color="secondary" style={{ marginBottom: 8 }}>
+            ROUTINE NAME
+          </Text>
           <TextInput
             style={styles.textInput}
             value={name}
-            onChangeText={v => { setName(v); markDirty(); }}
+            onChangeText={(v) => { setName(v); markDirty(); }}
             placeholder="e.g. Push Day"
             placeholderTextColor={Colors.textMuted}
             maxLength={50}
@@ -284,11 +376,13 @@ export default function RoutineDetailScreen() {
 
         {/* Description */}
         <Card style={styles.section}>
-          <Text variant="label" color="secondary" style={{ marginBottom: 8 }}>DESCRIPTION (optional)</Text>
+          <Text variant="label" color="secondary" style={{ marginBottom: 8 }}>
+            DESCRIPTION (optional)
+          </Text>
           <TextInput
             style={[styles.textInput, { minHeight: 72 }]}
             value={description}
-            onChangeText={v => { setDescription(v); markDirty(); }}
+            onChangeText={(v) => { setDescription(v); markDirty(); }}
             placeholder="What does this routine focus on?"
             placeholderTextColor={Colors.textMuted}
             multiline
@@ -298,9 +392,11 @@ export default function RoutineDetailScreen() {
 
         {/* Color */}
         <Card style={styles.section}>
-          <Text variant="label" color="secondary" style={{ marginBottom: 12 }}>ACCENT COLOR</Text>
+          <Text variant="label" color="secondary" style={{ marginBottom: 12 }}>
+            ACCENT COLOR
+          </Text>
           <View style={styles.colorRow}>
-            {ROUTINE_COLORS.map(c => (
+            {ROUTINE_COLORS.map((c) => (
               <TouchableOpacity
                 key={c}
                 style={[
@@ -323,41 +419,54 @@ export default function RoutineDetailScreen() {
             <Badge label={`${exercises.length}`} variant="secondary" />
           </View>
 
-          {exercises.map((ex, idx) => (
-            <Card key={idx} style={styles.exCard}>
-              {/* Exercise name + remove */}
-              <View style={styles.exHeader}>
-                <View style={[styles.exColorBar, { backgroundColor: color }]} />
-                <Text variant="body" bold color="primary" style={{ flex: 1 }}>{ex.exerciseName}</Text>
-                <TouchableOpacity onPress={() => removeExercise(idx)} style={styles.removeBtn}>
-                  <Ionicons name="close-circle" size={20} color={Colors.textMuted} />
-                </TouchableOpacity>
-              </View>
-
-              {/* Inputs */}
-              <View style={styles.exInputRow}>
-                {(
-                  [
-                    { label: 'Sets', field: 'sets' },
-                    { label: 'Reps', field: 'reps' },
-                    { label: 'Weight (kg)', field: 'weight' },
-                    { label: 'Rest (s)', field: 'restSeconds' },
-                  ] as const
-                ).map(({ label, field }) => (
-                  <View key={field} style={styles.exInputGroup}>
-                    <Text variant="caption" color="tertiary">{label}</Text>
-                    <TextInput
-                      style={styles.exInput}
-                      value={String((ex as any)[field])}
-                      onChangeText={v => updateExField(idx, field, v)}
-                      keyboardType="numeric"
-                      maxLength={5}
+          {exercises.map((ex, idx) => {
+            const exInfo = allExercises.find((e) => e.id === ex.exerciseId);
+            return (
+              <Card key={idx} style={styles.exCard}>
+                {/* Image + name row */}
+                <View style={styles.exHeader}>
+                  {exInfo?.image && (
+                    <ExerciseImage
+                      uri={exInfo.image}
+                      width={52}
+                      height={40}
+                      borderRadius={Radius.xs}
                     />
-                  </View>
-                ))}
-              </View>
-            </Card>
-          ))}
+                  )}
+                  <View style={[styles.exColorBar, { backgroundColor: color }]} />
+                  <Text variant="body" bold color="primary" style={{ flex: 1 }}>
+                    {ex.exerciseName}
+                  </Text>
+                  <TouchableOpacity onPress={() => removeExercise(idx)} style={styles.removeBtn}>
+                    <Ionicons name="close-circle" size={20} color={Colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Inputs */}
+                <View style={styles.exInputRow}>
+                  {(
+                    [
+                      { label: 'Sets', field: 'sets' },
+                      { label: 'Reps', field: 'reps' },
+                      { label: 'Weight (kg)', field: 'weight' },
+                      { label: 'Rest (s)', field: 'restSeconds' },
+                    ] as const
+                  ).map(({ label, field }) => (
+                    <View key={field} style={styles.exInputGroup}>
+                      <Text variant="caption" color="secondary">{label}</Text>
+                      <TextInput
+                        style={styles.exInput}
+                        value={String((ex as unknown as Record<string, unknown>)[field] ?? 0)}
+                        onChangeText={(v) => updateExField(idx, field, v)}
+                        keyboardType="numeric"
+                        maxLength={5}
+                      />
+                    </View>
+                  ))}
+                </View>
+              </Card>
+            );
+          })}
 
           {/* Add exercise button */}
           <TouchableOpacity
@@ -374,25 +483,30 @@ export default function RoutineDetailScreen() {
         {/* Stats summary */}
         {exercises.length > 0 && (
           <Card style={styles.section}>
-            <Text variant="label" color="secondary" style={{ marginBottom: 10 }}>ROUTINE SUMMARY</Text>
+            <Text variant="label" color="secondary" style={{ marginBottom: 10 }}>
+              ROUTINE SUMMARY
+            </Text>
             <View style={styles.summaryRow}>
               <View style={styles.summaryItem}>
                 <Text variant="h4" color="accent">{exercises.length}</Text>
-                <Text variant="caption" color="tertiary">Exercises</Text>
+                <Text variant="caption" color="secondary">Exercises</Text>
               </View>
               <View style={styles.summaryItem}>
                 <Text variant="h4" color="accent">
                   {exercises.reduce((a, e) => a + e.sets, 0)}
                 </Text>
-                <Text variant="caption" color="tertiary">Total Sets</Text>
+                <Text variant="caption" color="secondary">Total Sets</Text>
               </View>
               <View style={styles.summaryItem}>
                 <Text variant="h4" color="accent">
                   {Math.round(
-                    exercises.reduce((a, e) => a + e.sets * (45 + e.restSeconds), 0) / 60
+                    exercises.reduce(
+                      (a, e) => a + e.sets * (45 + (e.restSeconds ?? 60)),
+                      0
+                    ) / 60
                   )} min
                 </Text>
-                <Text variant="caption" color="tertiary">Est. Duration</Text>
+                <Text variant="caption" color="secondary">Est. Duration</Text>
               </View>
             </View>
           </Card>
@@ -400,7 +514,7 @@ export default function RoutineDetailScreen() {
 
         {/* Save */}
         <Button
-          label="Save Changes"
+          title="Save Changes"
           onPress={handleSave}
           variant={isDirty ? 'primary' : 'outline'}
           size="lg"
@@ -419,10 +533,7 @@ export default function RoutineDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.bg,
-  },
+  container: { flex: 1, backgroundColor: Colors.bg },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -432,19 +543,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.divider,
   },
-  backBtn: {
-    padding: 4,
-  },
-  deleteBtn: {
-    padding: 4,
-  },
-  scrollContent: {
-    paddingBottom: 40,
-  },
-  section: {
-    margin: Spacing.md,
-    marginBottom: 0,
-  },
+  backBtn: { padding: 4 },
+  deleteBtn: { padding: 4 },
+  scrollContent: { paddingBottom: 40 },
+  section: { margin: Spacing.md, marginBottom: 0 },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -460,11 +562,7 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
     paddingBottom: 8,
   },
-  colorRow: {
-    flexDirection: 'row',
-    gap: 12,
-    flexWrap: 'wrap',
-  },
+  colorRow: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
   colorDot: {
     width: 32,
     height: 32,
@@ -472,36 +570,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  colorDotSelected: {
-    borderWidth: 3,
-    borderColor: '#fff',
-  },
-  exCard: {
-    marginBottom: 10,
-    marginHorizontal: Spacing.md,
-  },
+  colorDotSelected: { borderWidth: 3, borderColor: '#fff' },
+  exCard: { marginBottom: 10, marginHorizontal: Spacing.md },
   exHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
-    gap: 10,
+    gap: 8,
   },
-  exColorBar: {
-    width: 4,
-    height: 28,
-    borderRadius: 2,
-  },
-  removeBtn: {
-    padding: 2,
-  },
-  exInputRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  exInputGroup: {
-    flex: 1,
-    alignItems: 'center',
-  },
+  exColorBar: { width: 4, height: 28, borderRadius: 2 },
+  removeBtn: { padding: 2 },
+  exInputRow: { flexDirection: 'row', gap: 10 },
+  exInputGroup: { flex: 1, alignItems: 'center' },
   exInput: {
     color: Colors.textPrimary,
     fontSize: 18,
@@ -525,19 +605,10 @@ const styles = StyleSheet.create({
     borderColor: Colors.accent,
     borderStyle: 'dashed',
   },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  summaryItem: {
-    alignItems: 'center',
-    gap: 4,
-  },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-around' },
+  summaryItem: { alignItems: 'center', gap: 4 },
   // Picker
-  pickerContainer: {
-    flex: 1,
-    backgroundColor: Colors.bg,
-  },
+  pickerContainer: { flex: 1, backgroundColor: Colors.bg },
   pickerHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -547,9 +618,20 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.divider,
   },
-  closeBtn: {
-    padding: 4,
+  closeBtn: { padding: 4 },
+  tabRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
+  tab: {
+    flex: 1,
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabActive: { borderBottomColor: Colors.accent },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -560,14 +642,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: 10,
   },
-  searchInput: {
-    flex: 1,
-    color: Colors.textPrimary,
-    fontSize: 16,
-  },
-  chipRow: {
-    marginBottom: Spacing.sm,
-  },
+  searchInput: { flex: 1, color: Colors.textPrimary, fontSize: 16 },
+  chipRow: { marginBottom: Spacing.sm },
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 6,
@@ -576,20 +652,14 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     marginRight: 8,
   },
-  chipActive: {
-    borderColor: Colors.accent,
-    backgroundColor: Colors.accent + '22',
-  },
+  chipActive: { borderColor: Colors.accent, backgroundColor: Colors.accent + '22' },
   exerciseRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: Colors.divider,
-    gap: 12,
+    gap: 10,
   },
-  exerciseInfo: {
-    flex: 1,
-    gap: 3,
-  },
+  exerciseInfo: { flex: 1, gap: 3 },
 });

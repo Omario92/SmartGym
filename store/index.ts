@@ -8,6 +8,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { CustomExercise } from '@/lib/exercises';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -113,6 +114,9 @@ interface SmartGymState {
   // Routines
   routines: Routine[];
 
+  // Custom exercises
+  customExercises: CustomExercise[];
+
   // Active workout (runtime only — not persisted)
   activeWorkout: ActiveWorkout | null;
 
@@ -137,6 +141,11 @@ interface SmartGymState {
   updateRoutine: (id: string, updates: Partial<Routine>) => void;
   deleteRoutine: (id: string) => void;
   duplicateRoutine: (id: string) => void;
+
+  // Custom Exercises
+  addCustomExercise: (exercise: CustomExercise) => void;
+  updateCustomExercise: (id: string, updates: Partial<CustomExercise>) => void;
+  deleteCustomExercise: (id: string) => void;
 
   // Workout
   startWorkout: (routine: Routine | { name: string; exercises: ExerciseLog[] }) => void;
@@ -206,6 +215,7 @@ export const useStore = create<SmartGymState>()(
       isTourVisible: false,
       tourStep: 0,
       routines: sampleRoutines,
+      customExercises: [],
       activeWorkout: null,
       sessions: [],
       measures: [],
@@ -273,6 +283,23 @@ export const useStore = create<SmartGymState>()(
               lastPerformed: undefined,
             });
           }
+        }),
+
+      // ── Custom Exercises ──
+      addCustomExercise: (exercise) =>
+        set((state) => {
+          state.customExercises.push(exercise);
+        }),
+
+      updateCustomExercise: (id, updates) =>
+        set((state) => {
+          const idx = state.customExercises.findIndex((e) => e.id === id);
+          if (idx !== -1) Object.assign(state.customExercises[idx], updates);
+        }),
+
+      deleteCustomExercise: (id) =>
+        set((state) => {
+          state.customExercises = state.customExercises.filter((e) => e.id !== id);
         }),
 
       // ── Workout ──
@@ -437,7 +464,7 @@ export const useStore = create<SmartGymState>()(
     {
       name: 'smartgym-store-v1', // AsyncStorage key
       storage: createJSONStorage(() => AsyncStorage),
-      version: 1,
+      version: 2,
 
       /**
        * Only persist data that should survive app restarts.
@@ -445,6 +472,7 @@ export const useStore = create<SmartGymState>()(
        */
       partialize: (state) => ({
         routines: state.routines,
+        customExercises: state.customExercises,
         sessions: state.sessions,
         measures: state.measures,
         settings: state.settings,
@@ -455,9 +483,13 @@ export const useStore = create<SmartGymState>()(
        * Version migration — increment `version` and add cases here
        * when the persisted shape changes in a breaking way.
        */
-      migrate: (persistedState: any, fromVersion: number) => {
-        // v0 → v1: no breaking changes, just pass through
-        return persistedState as SmartGymState;
+      migrate: (persistedState: unknown, fromVersion: number) => {
+        const s = persistedState as Partial<SmartGymState>;
+        if (fromVersion < 2) {
+          // v1 → v2: add customExercises array if missing
+          if (!s.customExercises) s.customExercises = [];
+        }
+        return s as SmartGymState;
       },
     }
   )
@@ -470,6 +502,7 @@ export const useStoreHydrated = () => useStore.persist.hasHydrated();
 // ─── Selectors ────────────────────────────────────────────────────────────────
 
 export const selectRoutines = (s: SmartGymState) => s.routines;
+export const selectCustomExercises = (s: SmartGymState) => s.customExercises;
 export const selectSessions = (s: SmartGymState) => s.sessions;
 export const selectMeasures = (s: SmartGymState) => s.measures;
 export const selectActiveWorkout = (s: SmartGymState) => s.activeWorkout;
