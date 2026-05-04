@@ -77,4 +77,8 @@ Always import from `lib/theme.ts`. Never hardcode hex values elsewhere.
 - No in-app purchases
 
 ## Context Strategy
-Ưu tiên dùng vexp tools (`run_pipeline`, `get_context_ca
+Ưu tiên dùng vexp tools (`run_pipeline`, `get_context_capsule`) để lấy context thay vì đọc nhiều file.
+
+## Recent changes
+<!-- Update this section after each significant edit -->
+```

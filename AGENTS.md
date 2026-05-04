@@ -82,3 +82,12 @@ Always import from `lib/theme.ts`. Never hardcode hex values elsewhere.
 ## Recent changes
 <!-- Update this section after each significant edit -->
 ```
+- [v2.5] Implemented 1RM Tracking:
+  - Created lib/1rm.ts for Epley, Brzycki, Lombardi calculations.
+  - Upgraded store/index.ts (v4) with exercisePRs and automated PR tracking on finish.
+  - Added real-time 1RM card with Reanimated PR badge in app/workout/active.tsx.
+  - Created components/ui/LineChart.tsx (SVG) for strength progression.
+  - Added Strength Progress tab in app/history.tsx and detail view in ExerciseDetailModal.tsx.
+  - Added 1RM formula settings in app/more.tsx.
+- [v2.0.0] Initial publishing with 1RM Calculator and UI refinements.
+```
