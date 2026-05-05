@@ -4,7 +4,8 @@ A **premium, production-ready fitness tracking app** built with Expo SDK 55 + Re
 
 ## ✨ Features
 
-- **v2.1 Cloud Custom Exercises** — Supabase backend to sync, create, edit, and share custom exercises across devices
+- **v3.0 AI Smart Trainer** — AI routine generator, auto-fill capabilities, and smart weekly planning via **OpenRouter** (Gemini, Claude, GPT, Gemma support)
+- **v2.1 Cloud Custom Exercises** — Supabase backend to sync, create, edit, and share custom exercises with **Full Video Support** & Automatic Thumbnails
 - **Full Routine Builder** — Create workouts with exercises, sets, reps, weight, rest timers
 - **1RM Calculator** — Integrated calculator for One-Rep Max with safety percentages (v2.0.0)
 - **v1.5 Premium Exercise Library** — 35+ high-quality exercises with high-resolution images
@@ -40,9 +41,12 @@ npx expo run:android
 | Framework | Expo SDK 55 + expo-router v4 |
 | Language | TypeScript (strict) |
 | Styling | StyleSheet (dark theme system via `lib/theme.ts`) |
+| AI Service | OpenRouter API (provider-agnostic) |
 | State | Zustand 5 + Immer 10 |
 | Navigation | expo-router (file-based, bottom tabs) |
 | Icons | @expo/vector-icons (Ionicons) |
+| Video | expo-video + expo-video-thumbnails |
+| Image | expo-image (optimized rendering) |
 | Charts | react-native-svg |
 | Storage | @react-native-async-storage/async-storage |
 | Animations | react-native-reanimated + gesture-handler |
@@ -82,8 +86,12 @@ SmartGym/
 ├── lib/
 │   ├── theme.ts             # Design tokens (colors, spacing, radii)
 │   └── exercises.ts         # 35+ exercise library with metadata
+├── services/
+│   └── ai/
+│       ├── aiService.ts     # Gemini REST client and functions
+│       └── prompts.ts       # AI Prompt builders
 └── store/
-    └── index.ts             # Zustand store (routines, workouts, history, measures)
+    └── index.ts             # Zustand store (routines, workouts, history, measures, auth, AI)
 ```
 
 ## 🎨 Design System
@@ -151,7 +159,6 @@ eas build --platform all
 
 ## 🔮 Roadmap (Not Yet Implemented)
 
-- [ ] Real Gemini AI integration for Smart Trainer
 - [ ] Push notifications for rest timer
 - [ ] iCloud / Google Drive backup
 - [ ] Apple Health / Google Fit sync

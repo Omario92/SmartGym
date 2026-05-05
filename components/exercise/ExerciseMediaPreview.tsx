@@ -2,8 +2,8 @@
  * ExerciseMediaPreview — Grid of media items with delete support.
  */
 
-import React from 'react';
-import { View, Image, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { Image } from 'expo-image';
+import { View, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Radius, FontSize } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
@@ -44,9 +44,10 @@ export function ExerciseMediaPreview({ media, onMediaRemoved, editable = true }:
       {media.map((item, idx) => (
         <View key={idx} style={styles.cell}>
           <Image
-            source={{ uri: item.thumbnailUrl ?? item.url }}
+            source={item.thumbnailUrl || item.url}
             style={styles.thumbnail}
-            resizeMode="cover"
+            contentFit="cover"
+            transition={200}
           />
           {/* Type badge */}
           <View style={styles.typeBadge}>

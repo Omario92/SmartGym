@@ -16,6 +16,7 @@ import {
   Image,
   Dimensions,
 } from 'react-native';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -150,10 +151,15 @@ export default function ExerciseDetailScreen() {
     );
   }
 
-  // ─── Hero image URL (first image or gif) ─────────────────────────────────
-  const heroUrl = media.find(m => m.type === 'image' || m.type === 'gif')?.url
-    ?? exercise.image
-    ?? null;
+  // ─── Hero media (first image, gif, or video) ───────────────────────────
+  const heroMedia = media[0] ?? (exercise.image ? { url: exercise.image, type: 'image' } : null);
+
+  // Setup video player if hero is a video
+  const player = useVideoPlayer(heroMedia?.type === 'video' ? heroMedia.url : null, (player) => {
+    player.loop = true;
+    player.muted = true;
+    player.play();
+  });
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -228,13 +234,23 @@ export default function ExerciseDetailScreen() {
       ) : (
         /* ── View Mode ─────────────────────────────────────────────────── */
         <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-          {/* Hero Image — full width, no horizontal padding */}
-          {heroUrl ? (
-            <Image
-              source={{ uri: heroUrl }}
-              style={styles.heroImage}
-              resizeMode="cover"
-            />
+          {/* Hero Media — full width, no horizontal padding */}
+          {heroMedia ? (
+            heroMedia.type === 'video' ? (
+              <VideoView
+                player={player}
+                style={styles.heroImage}
+                contentMode="cover"
+                allowsFullscreen
+                allowsPictureInPicture
+              />
+            ) : (
+              <Image
+                source={{ uri: heroMedia.url }}
+                style={styles.heroImage}
+                resizeMode="cover"
+              />
+            )
           ) : (
             <View style={styles.heroPlaceholder}>
               <Text style={{ fontSize: 52 }}>💪</Text>

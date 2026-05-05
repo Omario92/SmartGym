@@ -4,7 +4,7 @@
  */
 
 import * as ImagePicker from 'expo-image-picker';
-import { decode } from 'base64-arraybuffer';
+import * as VideoThumbnails from 'expo-video-thumbnails';
 import { supabase } from './supabase';
 import type { MediaItem } from './supabaseTypes';
 
@@ -53,7 +53,7 @@ export async function pickMedia(
       : ImagePicker.MediaTypeOptions.Images,
     allowsEditing: !isVideo,
     quality: isVideo ? 0.8 : 0.9,
-    base64: true,
+    base64: false,
     exif: false,
   });
 
@@ -96,20 +96,22 @@ export async function uploadMedia(
 ): Promise<UploadResult> {
   validateAsset(asset, type);
 
-  if (!asset.base64) {
-    throw new Error('Asset base64 data is missing. Please try again.');
-  }
-
   const ext = getExtension(asset.mimeType, type);
   const timestamp = Date.now();
   const storagePath = `${userId}/${exerciseId}/${type}-${timestamp}.${ext}`;
   const contentType = asset.mimeType ?? getDefaultMimeType(type);
 
-  const arrayBuffer = decode(asset.base64);
+  // Use FormData for reliable file upload on both iOS and Android
+  const formData = new FormData();
+  formData.append('file', {
+    uri: asset.uri,
+    name: storagePath.split('/').pop(),
+    type: contentType,
+  } as any);
 
   const { error } = await supabase.storage
     .from(BUCKET)
-    .upload(storagePath, arrayBuffer, {
+    .upload(storagePath, formData, {
       contentType,
       upsert: false,
     });
@@ -122,12 +124,49 @@ export async function uploadMedia(
 
   const publicUrl = urlData.publicUrl;
 
+  let thumbnailUrl: string | undefined;
+
+  // Generate thumbnail for videos
+  if (type === 'video') {
+    try {
+      const { uri: thumbUri } = await VideoThumbnails.getThumbnailAsync(asset.uri, {
+        time: 500, // Capture at 0.5s
+        quality: 0.7,
+      });
+
+      const thumbPath = `${userId}/${exerciseId}/thumb-${timestamp}.jpg`;
+      const thumbFormData = new FormData();
+      thumbFormData.append('file', {
+        uri: thumbUri,
+        name: `thumb-${timestamp}.jpg`,
+        type: 'image/jpeg',
+      } as any);
+
+      const { data: thumbData, error: thumbError } = await supabase.storage
+        .from(BUCKET)
+        .upload(thumbPath, thumbFormData, {
+          contentType: 'image/jpeg',
+          upsert: false,
+        });
+
+      if (!thumbError) {
+        const { data: thumbUrlData } = supabase.storage
+          .from(BUCKET)
+          .getPublicUrl(thumbPath);
+        thumbnailUrl = thumbUrlData.publicUrl;
+      }
+    } catch (e) {
+      console.warn('Could not generate video thumbnail:', e);
+    }
+  }
+
   const mediaType: MediaItem['type'] =
     type === 'gif' ? 'gif' : type === 'video' ? 'video' : 'image';
 
   const mediaItem: MediaItem = {
     url: publicUrl,
     type: mediaType,
+    thumbnailUrl,
     storagePath,
   };
 

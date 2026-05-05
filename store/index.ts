@@ -11,6 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { CustomExercise } from '@/lib/exercises';
 import { type OneRMFormula, calculate1RM } from '@/lib/1rm';
 import type { AuthUser } from '@/lib/supabaseTypes';
+import type { AIUserProfile, AISmartWeeklyPlan } from '@/services/ai/types';
 
 // ─── Draft exercise (unsaved form state) ─────────────────────────────────────
 export interface CustomExerciseDraft {
@@ -115,6 +116,9 @@ export interface AppSettings {
   isPremium: boolean;
   language: string;
   oneRmFormula: OneRMFormula;
+  // AI Smart Trainer
+  geminiApiKey?: string;
+  aiProfile?: AIUserProfile;
 }
 
 export interface ExercisePR {
@@ -163,6 +167,9 @@ interface SmartGymState {
   authUser: AuthUser | null;
   syncStatus: 'idle' | 'syncing' | 'done' | 'error';
   localSyncDone: boolean; // true once local→cloud migration has run
+
+  // ── AI cache (runtime only — not persisted) ──────────────────────────────
+  aiWeeklyPlanCache: { generatedAt: string; data: AISmartWeeklyPlan } | null;
 
   // ─── Actions ─────────────────────────────────────────────────────────
 
@@ -222,6 +229,10 @@ interface SmartGymState {
   clearAuthUser: () => void;
   setSyncStatus: (status: 'idle' | 'syncing' | 'done' | 'error') => void;
   setLocalSyncDone: (done: boolean) => void;
+
+  // AI cache
+  setAIWeeklyPlanCache: (data: AISmartWeeklyPlan) => void;
+  clearAIWeeklyPlanCache: () => void;
 }
 
 // ─── Initial State ────────────────────────────────────────────────────────────
@@ -235,9 +246,10 @@ const initialSettings: AppSettings = {
   notifications: true,
   keepScreenOn: true,
   showTour: true,
-  isPremium: false,
+  isPremium: true, // Bypass premium for testing
   language: 'en',
   oneRmFormula: 'epley',
+  geminiApiKey: process.env.EXPO_PUBLIC_GEMINI_API_KEY, // Loaded from .env
 };
 
 // Sample routines — only used on first ever launch (before persist kicks in)
@@ -281,6 +293,7 @@ export const useStore = create<SmartGymState>()(
       authUser: null,
       syncStatus: 'idle',
       localSyncDone: false,
+      aiWeeklyPlanCache: null,
 
       // ── Settings ──
       updateSettings: (updates) =>
@@ -627,6 +640,17 @@ export const useStore = create<SmartGymState>()(
       setLocalSyncDone: (done) =>
         set((state) => {
           state.localSyncDone = done;
+        }),
+
+      // ── AI cache ─────────────────────────────────────────────────────────
+      setAIWeeklyPlanCache: (data) =>
+        set((state) => {
+          state.aiWeeklyPlanCache = { generatedAt: new Date().toISOString(), data };
+        }),
+
+      clearAIWeeklyPlanCache: () =>
+        set((state) => {
+          state.aiWeeklyPlanCache = null;
         }),
     })),
     {

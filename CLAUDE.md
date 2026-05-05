@@ -4,8 +4,10 @@
 - Expo SDK 55 + React Native 0.76.5 + expo-router v4 (file-based routing)
 - TypeScript strict mode
 - Zustand 5 + Immer 10 (state), AsyncStorage (persistence)
-- react-native-reanimated + gesture-handler (animations)
+- react-native-reanimated 4.2.1 + gesture-handler (animations)
 - react-native-svg (charts), @expo/vector-icons/Ionicons
+- Supabase (cloud exercises + auth), React Query (server state)
+- react-hook-form + zod (forms)
 
 ## Commands
 ```
@@ -33,22 +35,44 @@ app/
   workout/
     active.tsx         # live session (full-screen modal)
     all-exercises.tsx  # Exercise Library v1.5
+  auth/
+    login.tsx, register.tsx  # Email / Google / Apple Sign In
+  exercise/
+    create.tsx, [id].tsx     # Cloud exercise CRUD
 
 components/
+  ai/
+    AIGeneratorModal.tsx      # Feature 1: AI Routine Generator (multi-step modal)
+    AIExerciseFillButton.tsx  # Feature 2: Auto-fill exercise form button
   exercise/
     ExerciseImage.tsx        # shimmer image loader
     ExerciseDetailModal.tsx  # exercise detail view
+    ExerciseForm.tsx         # controlled form (react-hook-form)
+    ExerciseMediaPicker.tsx, ExerciseMediaPreview.tsx
   tour/GuidedTour.tsx        # 7-step spotlight onboarding
   ui/
     Text.tsx, Card.tsx, Button.tsx
-    ProgressRing.tsx, Badge.tsx, EmptyState.tsx
+    ProgressRing.tsx, Badge.tsx, EmptyState.tsx, LineChart.tsx
 
 lib/
-  theme.ts      # design tokens — import from here, never hardcode colors
-  exercises.ts  # 35+ exercise library with metadata
+  theme.ts            # design tokens — import from here, never hardcode colors
+  exercises.ts        # 35+ exercise library with metadata
+  supabase.ts         # Supabase client
+  supabaseTypes.ts    # DB row types, CloudExercise, AuthUser
+  exerciseMapper.ts   # DB row ↔ app type converters
+  exerciseService.ts  # React Query hooks for cloud exercises
+  mediaUploadService.ts
+  1rm.ts              # Epley, Brzycki, Lombardi 1RM formulas
+
+services/
+  ai/
+    aiService.ts   # Gemini REST client — generateRoutine, generateExerciseFill, generateSmartWeeklyPlan, validateGeminiKey
+    aiUtils.ts     # buildAIContext (store → AIBuildContext), inferFocusMuscles, isAIProfileComplete
+    types.ts       # AIUserProfile, AIBuildContext, AIGeneratedRoutine, AIExerciseFill, AISmartWeeklyPlan, AIServiceError
+    prompts.ts     # Prompt builders for each AI feature
 
 store/
-  index.ts      # single Zustand store (routines, workouts, history, measures)
+  index.ts      # single Zustand store v6 (routines, workouts, history, measures, auth, AI)
 ```
 
 ## Design tokens (lib/theme.ts)
@@ -69,11 +93,14 @@ Always import from `lib/theme.ts`. Never hardcode hex values elsewhere.
 - File-based routing via expo-router — match existing route conventions
 - Do NOT touch `store/index.ts` structure without reading it first
 - Do NOT add new navigation tabs without updating `app/(tabs)/_layout.tsx`
+- AI calls must go through `services/ai/aiService.ts` only — never fetch Gemini directly from components
+- Gemini API key is user-owned; read from `settings.geminiApiKey`, validated via `validateGeminiKey()`
+- All AI features are Pro-gated: check `settings.isPremium` before calling any AI function
 
 ## Known limitations (not yet implemented)
-- Persistence is Zustand in-memory only (no SQLite yet)
-- No real AI — Smart Trainer is a PRO teaser UI
-- No push notifications, no cloud backup, no health app sync
+- Persistence is Zustand + AsyncStorage (no SQLite yet)
+- AI requires user's own Google Gemini API key (Settings → AI)
+- No push notifications, no health app sync
 - No in-app purchases
 
 ## Context Strategy
@@ -82,6 +109,16 @@ Always import from `lib/theme.ts`. Never hardcode hex values elsewhere.
 ## Recent changes
 <!-- Update this section after each significant edit -->
 ```
+- [v3.0] AI Smart Trainer — Google Gemini integration (Pro only):
+  - Created services/ai/types.ts: AIUserProfile, AIBuildContext, AIGeneratedRoutine, AIExerciseFill, AISmartWeeklyPlan, AIServiceError, AIWeekDay, AIProgressAnalysis types.
+  - Created services/ai/prompts.ts: buildRoutinePrompt, buildExerciseFillPrompt, buildWeeklyPlanPrompt — persona "Coach Alex, 20+ yrs".
+  - Created services/ai/aiService.ts: callGemini<T> (JSON mode, retry×2, markdown-fence strip), mapHttpError, generateRoutine, generateExerciseFill, generateSmartWeeklyPlan, validateGeminiKey.
+  - Created services/ai/aiUtils.ts: buildAIContext (store → AIBuildContext), inferFocusMuscles, isAIProfileComplete, DEFAULT_AI_PROFILE.
+  - Created components/ai/AIGeneratorModal.tsx: Feature 1 multi-step modal (gate→key→profile→confirm→generating→preview→error). PulsingRing Reanimated animation. Inline exercise editor in preview.
+  - Created components/ai/AIExerciseFillButton.tsx: Feature 2 drop-in button. FillPreviewModal with numbered steps, tips, mistakes, breathing card, variation chips.
+  - Extended store/index.ts (v6): geminiApiKey + aiProfile added to AppSettings; aiWeeklyPlanCache (runtime-only, not persisted) + setAIWeeklyPlanCache / clearAIWeeklyPlanCache actions.
+  - Model: gemini-2.0-flash with responseMimeType "application/json".
+  - Pro gate on every AI entry point via settings.isPremium check.
 - [v2.1] Cloud Backend (Supabase) Integration:
   - Synced Cloud Exercises into CustomExerciseManager (routine picker): cloud+local merged, de-duplicated by id.
   - Added isCloud flag to CustomExercise type and cloudExerciseToCustom mapper.
@@ -113,4 +150,7 @@ Always import from `lib/theme.ts`. Never hardcode hex values elsewhere.
   - Added 1RM formula settings in app/more.tsx.
 - [v2.0.0] Initial publishing with 1RM Calculator and UI refinements.
 - [v2.5.1] Bug Fixes:
-  - Fixed TypeScript 'never' type narrowing issue in store/index.ts for 1R
+  - Fixed TypeScript 'never' type narrowing issue in store/index.ts for 1RM PR processing.
+  - Resolved Android IDE 'ResourceException' by triggering workspace refresh.
+  - Fixed 'shared-testutil.jar' build path error in node_modules by creating dummy artifact.
+```

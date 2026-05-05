@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { GlobalExerciseSearch } from '@/components/exercise/GlobalExerciseSearch';
 import { ExerciseImage } from '@/components/exercise/ExerciseImage';
+import { AIGeneratorModal } from '@/components/ai/AIGeneratorModal';
 import { useStore, selectCustomExercises } from '@/store';
 import type { Routine, RoutineExercise } from '@/store';
 import { EXERCISES } from '@/lib/exercises';
@@ -290,6 +291,7 @@ export default function ExploreScreen() {
 
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [searchVisible, setSearchVisible] = useState(false);
+  const [aiModalVisible, setAiModalVisible] = useState(false);
 
   const categoriesWithCount = React.useMemo(() => {
     const allEx = [...EXERCISES, ...customExercises];
@@ -350,6 +352,16 @@ export default function ExploreScreen() {
         onClose={() => setSearchVisible(false)}
       />
 
+      {/* AI Generator Modal */}
+      <AIGeneratorModal
+        visible={aiModalVisible}
+        onClose={() => setAiModalVisible(false)}
+        onSaved={(name) => {
+          setAiModalVisible(false);
+          showToast(`✅ "${name}" saved to Routines!`);
+        }}
+      />
+
       {/* Header */}
       <View style={styles.header}>
         <View>
@@ -385,7 +397,7 @@ export default function ExploreScreen() {
                   variant="primary"
                   size="sm"
                   style={{ marginTop: Spacing.md, alignSelf: 'flex-start' }}
-                  onPress={() => Alert.alert('🤖 Smart Trainer AI', 'Upgrade to Pro to unlock AI-powered personalized workout plans!')}
+                  onPress={() => setAiModalVisible(true)}
                 />
               </View>
             </View>
