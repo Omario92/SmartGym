@@ -20,6 +20,7 @@ import { GlobalExerciseSearch } from '@/components/exercise/GlobalExerciseSearch
 import { ExerciseImage } from '@/components/exercise/ExerciseImage';
 import { useStore, selectCustomExercises } from '@/store';
 import type { Routine, RoutineExercise } from '@/store';
+import { EXERCISES } from '@/lib/exercises';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -290,6 +291,14 @@ export default function ExploreScreen() {
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [searchVisible, setSearchVisible] = useState(false);
 
+  const categoriesWithCount = React.useMemo(() => {
+    const allEx = [...EXERCISES, ...customExercises];
+    return EXERCISE_CATEGORIES.map(cat => ({
+      ...cat,
+      count: allEx.filter(e => e.muscleGroup === cat.id).length
+    }));
+  }, [customExercises]);
+
   const handleSaveToRoutines = (program: typeof FEATURED_PROGRAMS[0]) => {
     const routine = programToRoutine(program);
     addRoutine(routine);
@@ -395,7 +404,7 @@ export default function ExploreScreen() {
           </Text>
           <View style={styles.globalSearchBadge}>
             <Text style={{ color: Colors.accent, fontSize: FontSize.xs, fontWeight: FontWeight.bold }}>
-              {40 + customExercises.length}
+              {EXERCISES.length + customExercises.length}
             </Text>
           </View>
         </TouchableOpacity>
@@ -527,7 +536,7 @@ export default function ExploreScreen() {
           </TouchableOpacity>
         </View>
         <View style={styles.categoriesGrid}>
-          {EXERCISE_CATEGORIES.map((cat) => (
+          {categoriesWithCount.map((cat) => (
             <CategoryChip
               key={cat.id}
               cat={cat}

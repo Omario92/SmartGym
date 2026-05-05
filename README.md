@@ -9,11 +9,11 @@ A **premium, production-ready fitness tracking app** built with Expo SDK 55 + Re
 - **v1.5 Premium Exercise Library** — 35+ high-quality exercises with high-resolution images
 - **Advanced Search & Filter** — Deep filtering by muscle, difficulty, and equipment
 - **Custom Exercise System** — Create and manage your own custom exercises
-- **Live Workout Session** — Set-by-set logging with auto rest timer and animated progress
+- **Live Workout Session** — Set-by-set logging with custom per-exercise rest timers and animated progress
 - **Guided Onboarding Tour** — 7-step spotlight tour on first launch
 - **Explore Tab** — Featured programs, quick workouts, and browse by muscle group
 - **History & Analytics** — Weekly heatmap, volume charts, and monthly summary
-- **Body Measurements** — Track weight, body fat, and body measurements with trend charts
+- **Body Measurements** — Track body measurements with smooth trend charts and interactive logs
 - **Premium Design** — Dark mode, neon green accent (#00FF9D), and Dynamic Island support
 - **Store Persistence** — All your data is saved locally using Zustand + AsyncStorage
 

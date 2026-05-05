@@ -18,8 +18,10 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/lib/the
 import { Text } from '@/components/ui/Text';
 import { Card } from '@/components/ui/Card';
 import { ProgressRing } from '@/components/ui/ProgressRing';
-import { useStore } from '@/store';
+import { useStore, selectExercisePRs, getExercise1RMHistory, selectCustomExercises } from '@/store';
 import type { WorkoutSession } from '@/store';
+import { findExerciseById } from '@/lib/exercises';
+import { LineChart } from '@/components/ui/LineChart';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -267,9 +269,13 @@ export default function HistoryScreen() {
   const sessions = useStore((s) => s.sessions);
   const deleteSession = useStore((s) => s.deleteSession);
   const clearHistory = useStore((s) => s.clearHistory);
+  const exercisePRs = useStore(selectExercisePRs);
+  const customExercises = useStore(selectCustomExercises);
+  const prExerciseIds = Object.keys(exercisePRs);
 
   const [period, setPeriod] = useState<Period>('week');
-  const [tab, setTab] = useState<'log' | 'stats' | 'awards'>('log');
+  const [tab, setTab] = useState<'log' | 'stats' | 'strength' | 'awards'>('log');
+  const [selectedStrengthEx, setSelectedStrengthEx] = useState<string | null>(prExerciseIds[0] || null);
   const [showClearModal, setShowClearModal] = useState(false);
   const { show: showToast, ToastComponent } = useToast();
 
@@ -384,7 +390,7 @@ export default function HistoryScreen() {
 
         {/* Tab switcher */}
         <View style={styles.tabRow}>
-          {(['log', 'stats', 'awards'] as const).map((t) => (
+          {(['log', 'stats', 'strength', 'awards'] as const).map((t) => (
             <TouchableOpacity key={t} onPress={() => setTab(t)}
               style={[styles.tabBtn, tab === t && styles.tabBtnActive]}>
               <Text style={{
@@ -441,6 +447,55 @@ export default function HistoryScreen() {
                 <Text semibold>{stat.value}</Text>
               </View>
             ))}
+          </Card>
+        )}
+
+        {/* Strength tab */}
+        {tab === 'strength' && (
+          <Card style={{ marginHorizontal: 0 }}>
+            <Text semibold style={{ marginBottom: Spacing.md }}>Strength Progress (1RM)</Text>
+            {prExerciseIds.length === 0 ? (
+              <View style={styles.emptyHistory}>
+                <Text color="secondary" center>Complete a workout to track your 1RM progression.</Text>
+              </View>
+            ) : (
+              <>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: Spacing.md }}>
+                  {prExerciseIds.map(id => {
+                    const exInfo = findExerciseById(id, customExercises);
+                    const name = exInfo ? exInfo.name : id;
+                    const isActive = selectedStrengthEx === id;
+                    return (
+                      <TouchableOpacity 
+                        key={id} 
+                        onPress={() => setSelectedStrengthEx(id)}
+                        style={[styles.exercisePill, isActive && styles.exercisePillActive]}
+                      >
+                        <Text style={{ color: isActive ? '#000' : Colors.textPrimary, fontSize: FontSize.sm, fontWeight: isActive ? FontWeight.bold : FontWeight.medium }}>
+                          {name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+                
+                {selectedStrengthEx && (
+                  <View>
+                    <View style={styles.prHeader}>
+                      <Text color="muted">Current 1RM PR</Text>
+                      <Text variant="h3" color="accent">{exercisePRs[selectedStrengthEx].oneRM} kg</Text>
+                      <Text color="muted" style={{ fontSize: FontSize.xs }}>
+                        Best Set: {exercisePRs[selectedStrengthEx].weight}kg × {exercisePRs[selectedStrengthEx].reps}
+                      </Text>
+                    </View>
+                    <LineChart 
+                      data={getExercise1RMHistory(useStore.getState(), selectedStrengthEx)} 
+                      unit="kg"
+                    />
+                  </View>
+                )}
+              </>
+            )}
           </Card>
         )}
 
@@ -579,5 +634,25 @@ const styles = StyleSheet.create({
   modalCancelBtn: {
     paddingVertical: Spacing.md, paddingHorizontal: Spacing.xl,
     borderRadius: Radius.md, width: '100%', alignItems: 'center',
+  },
+  exercisePill: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    backgroundColor: Colors.bgCard2,
+    borderRadius: Radius.full,
+    marginRight: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  exercisePillActive: {
+    backgroundColor: Colors.accent,
+    borderColor: Colors.accent,
+  },
+  prHeader: {
+    alignItems: 'center',
+    paddingVertical: Spacing.md,
+    backgroundColor: Colors.bgCard2,
+    borderRadius: Radius.md,
+    marginBottom: Spacing.md,
   },
 });

@@ -20,6 +20,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { ExerciseCard } from './ExerciseCard';
+import { ExerciseDetailModal } from './ExerciseDetailModal';
 import { useStore, selectCustomExercises } from '@/store';
 import {
   EXERCISES,
@@ -52,6 +53,7 @@ export const GlobalExerciseSearch: React.FC<GlobalExerciseSearchProps> = ({
   const [muscleFilter, setMuscleFilter] = useState<MuscleGroup | null>(null);
   const [diffFilter, setDiffFilter] = useState<string | null>(null);
   const [customOnly, setCustomOnly] = useState(false);
+  const [detailExercise, setDetailExercise] = useState<Exercise | CustomExercise | null>(null);
 
   const results = useMemo(() => {
     const q = query.toLowerCase();
@@ -193,11 +195,24 @@ export const GlobalExerciseSearch: React.FC<GlobalExerciseSearchProps> = ({
               compact
               showAdd={!!onSelect}
               showFavorite
-              onPress={() => onSelect?.(item)}
+              onPress={() => {
+                if (onSelect) {
+                  onSelect(item);
+                } else {
+                  setDetailExercise(item);
+                }
+              }}
             />
           )}
         />
       </SafeAreaView>
+
+      {/* Exercise Detail Modal */}
+      <ExerciseDetailModal
+        exercise={detailExercise as Exercise | null}
+        visible={!!detailExercise}
+        onClose={() => setDetailExercise(null)}
+      />
     </Modal>
   );
 };

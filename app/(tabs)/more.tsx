@@ -175,6 +175,7 @@ const PremiumCard: React.FC<{ isPremium: boolean; onUpgrade: () => void }> = ({
 export default function MoreScreen() {
   const settings = useStore(s => s.settings);
   const updateSettings = useStore(s => s.updateSettings);
+  const updateOneRmFormula = useStore(s => s.updateOneRmFormula);
   const startTour = useStore(s => s.startTour);
   const customExercises = useStore(selectCustomExercises);
   const favoriteIds = useStore(selectFavoriteIds);
@@ -368,8 +369,24 @@ export default function MoreScreen() {
           <SettingRow
             icon="📊"
             label="1RM Calculator"
-            badge="NEW"
             onPress={() => router.push('/tools/1rm-calculator')}
+          />
+          <View style={styles.divider} />
+          <SettingRow
+            icon="🧮"
+            label="1RM Formula"
+            value={
+              settings.oneRmFormula === 'epley' ? 'Epley' :
+              settings.oneRmFormula === 'brzycki' ? 'Brzycki' : 'Lombardi'
+            }
+            onPress={() =>
+              Alert.alert('1RM Formula', 'Choose the formula for estimating your 1-Rep Max.\n\n• Epley (Default): Best for general use.\n• Brzycki: Best for < 10 reps.\n• Lombardi: Focuses on pure strength.', [
+                { text: 'Epley', onPress: () => updateOneRmFormula('epley') },
+                { text: 'Brzycki', onPress: () => updateOneRmFormula('brzycki') },
+                { text: 'Lombardi', onPress: () => updateOneRmFormula('lombardi') },
+                { text: 'Cancel', style: 'cancel' },
+              ])
+            }
           />
         </Card>
 

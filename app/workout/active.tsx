@@ -13,7 +13,11 @@ import {
   Alert,
   Dimensions,
   Animated,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
+import Reanimated, { useAnimatedStyle, withTiming, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, Redirect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,8 +27,9 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { ProgressRing } from '@/components/ui/ProgressRing';
 import { ExerciseImage } from '@/components/exercise/ExerciseImage';
-import { useStore, type SetLog, selectCustomExercises } from '@/store';
+import { useStore, type SetLog, selectCustomExercises, selectExercisePRs } from '@/store';
 import { findExerciseById } from '@/lib/exercises';
+import { estimate1RMFromSets } from '@/lib/1rm';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
@@ -62,6 +67,46 @@ const RestTimer: React.FC<{
         Great set! Take a breather 💪
       </Text>
       <Button title="Skip Rest" variant="outline" onPress={onSkip} />
+    </View>
+  );
+};
+
+// ─── Exercise 1RM Card ────────────────────────────────────────────────────────
+
+const Exercise1RMCard: React.FC<{
+  current1RM: number;
+  historicalPR: number | null;
+}> = ({ current1RM, historicalPR }) => {
+  const isNewPR = historicalPR !== null && current1RM > historicalPR;
+  
+  const badgeStyle = useAnimatedStyle(() => {
+    return {
+      opacity: withTiming(isNewPR ? 1 : 0, { duration: 300 }),
+      transform: [
+        { scale: withSpring(isNewPR ? 1 : 0.8, { damping: 10, stiffness: 100 }) }
+      ]
+    };
+  }, [isNewPR]);
+
+  return (
+    <View style={[styles.ormCard, isNewPR && styles.ormCardPR]}>
+      <View>
+        <Text color="secondary" style={{ fontSize: FontSize.xs, marginBottom: 2 }}>
+          Est. 1RM (Current)
+        </Text>
+        <Text variant="h3" color={isNewPR ? 'accent' : 'primary'}>
+          {current1RM.toFixed(1)} kg
+        </Text>
+        {historicalPR !== null && (
+          <Text color="muted" style={{ fontSize: FontSize.xs, marginTop: 2 }}>
+            Previous PR: {historicalPR.toFixed(1)} kg
+          </Text>
+        )}
+      </View>
+      <Reanimated.View style={[styles.prBadge, badgeStyle]}>
+        <Ionicons name="trophy" size={12} color="#000" style={{ marginRight: 4 }} />
+        <Text style={styles.prBadgeText}>New PR!</Text>
+      </Reanimated.View>
     </View>
   );
 };
@@ -137,6 +182,46 @@ const SetRow: React.FC<{
   );
 };
 
+// ─── Exercise Rest Modal ────────────────────────────────────────────────────────
+
+const ExerciseRestModal: React.FC<{
+  visible: boolean;
+  initialValue: number;
+  onClose: () => void;
+  onSave: (val: number) => void;
+}> = ({ visible, initialValue, onClose, onSave }) => {
+  const [val, setVal] = useState(initialValue.toString());
+  
+  useEffect(() => {
+    if (visible) setVal(initialValue.toString());
+  }, [visible, initialValue]);
+
+  return (
+    <Modal visible={visible} transparent animationType="fade">
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' }}>
+        <View style={{ width: 300, backgroundColor: Colors.bgCard, borderRadius: Radius.md, padding: Spacing.lg, borderWidth: 1, borderColor: Colors.border }}>
+          <Text variant="h4" style={{ marginBottom: Spacing.md }}>Rest Time (seconds)</Text>
+          <TextInput
+            style={{ backgroundColor: Colors.bgInput, color: '#FFF', padding: Spacing.md, borderRadius: Radius.sm, fontSize: 18, textAlign: 'center', borderWidth: 1, borderColor: Colors.border }}
+            keyboardType="number-pad"
+            value={val}
+            onChangeText={setVal}
+            autoFocus
+          />
+          <View style={{ flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.lg }}>
+            <Button title="Cancel" variant="ghost" style={{ flex: 1 }} onPress={onClose} />
+            <Button title="Save" variant="primary" style={{ flex: 1 }} onPress={() => {
+              const num = parseInt(val, 10);
+              if (!isNaN(num) && num >= 0) onSave(num);
+              else onSave(0);
+            }} />
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+};
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function ActiveWorkoutScreen() {
@@ -149,7 +234,11 @@ export default function ActiveWorkoutScreen() {
   const startRest = useStore((s) => s.startRest);
   const skipRest = useStore((s) => s.skipRest);
   const settings = useStore((s) => s.settings);
+  const updateExerciseRestTime = useStore((s) => s.updateExerciseRestTime);
+
+  const [restPickerExerciseIndex, setRestPickerExerciseIndex] = useState<number | null>(null);
   const customExercises = useStore(selectCustomExercises);
+  const exercisePRs = useStore(selectExercisePRs);
   const insets = useSafeAreaInsets();
 
   const [restRemaining, setRestRemaining] = useState(0);
@@ -212,7 +301,8 @@ export default function ActiveWorkoutScreen() {
       // Complete the set
       updateSet(exerciseIndex, setIndex, { completed: true });
       // Start rest timer
-      const restTime = settings.restTimerDefault;
+      const exercise = activeWorkout.exercises[exerciseIndex];
+      const restTime = exercise.restSeconds ?? settings.restTimerDefault;
       startRest(restTime);
     }
   };
@@ -289,17 +379,20 @@ export default function ActiveWorkoutScreen() {
         )}
 
         {/* Exercise List */}
-        {!activeWorkout.isResting && (
-          <ScrollView
-            style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
+        <ScrollView
+          style={[styles.scroll, activeWorkout.isResting && { display: 'none' }]}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
             {activeWorkout.exercises.map((exercise, eIdx) => {
               const allSetsComplete = exercise.sets.every((s) => s.completed);
               const exInfo = findExerciseById(exercise.exerciseId, customExercises);
               const isCustom = exInfo && 'isCustom' in exInfo && exInfo.isCustom;
+              
+              const currentEst1RM = estimate1RMFromSets(exercise.sets, settings.oneRmFormula);
+              const historicalPR = exercisePRs[exercise.exerciseId]?.oneRM ?? null;
+              
               return (
                 <View
                   key={`${exercise.exerciseId}-${eIdx}`}
@@ -347,12 +440,28 @@ export default function ActiveWorkoutScreen() {
 
                       </View>
                     </View>
-                    <TouchableOpacity onPress={() => addSet(eIdx)}>
-                      <Text color="accent" style={{ fontSize: FontSize.sm }}>
-                        + Set
-                      </Text>
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.md }}>
+                      <TouchableOpacity 
+                        onPress={() => setRestPickerExerciseIndex(eIdx)} 
+                        style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bgCard2, paddingHorizontal: 8, paddingVertical: 4, borderRadius: Radius.sm, borderWidth: 1, borderColor: Colors.border }}
+                      >
+                        <Ionicons name="timer-outline" size={14} color={Colors.textSecondary} />
+                        <Text color="secondary" style={{ fontSize: FontSize.xs, marginLeft: 4, fontWeight: FontWeight.medium }}>
+                          {exercise.restSeconds ?? settings.restTimerDefault}s
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => addSet(eIdx)}>
+                        <Text color="accent" style={{ fontSize: FontSize.sm }}>
+                          + Set
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
+
+                  {/* Estimated 1RM Card */}
+                  {(currentEst1RM > 0 || historicalPR !== null) && (
+                    <Exercise1RMCard current1RM={currentEst1RM} historicalPR={historicalPR} />
+                  )}
 
                   {/* Set column labels */}
                   <View style={styles.setLabels}>
@@ -365,7 +474,7 @@ export default function ActiveWorkoutScreen() {
                     <View style={styles.setInputWrap}>
                       <Text color="muted" style={styles.setInputLabel}>Reps</Text>
                     </View>
-                    <View style={styles.doneBtn} />
+                    <View style={{ width: 40 }} />
                   </View>
 
                   {/* Sets */}
@@ -404,7 +513,21 @@ export default function ActiveWorkoutScreen() {
               style={{ marginTop: Spacing.sm }}
             />
           </ScrollView>
-        )}
+          <ExerciseRestModal
+            visible={restPickerExerciseIndex !== null}
+            initialValue={
+              restPickerExerciseIndex !== null
+                ? activeWorkout.exercises[restPickerExerciseIndex].restSeconds ?? settings.restTimerDefault
+                : settings.restTimerDefault
+            }
+            onClose={() => setRestPickerExerciseIndex(null)}
+            onSave={(val) => {
+              if (restPickerExerciseIndex !== null) {
+                updateExerciseRestTime(restPickerExerciseIndex, val);
+              }
+              setRestPickerExerciseIndex(null);
+            }}
+          />
     </View>
   );
 }
@@ -490,6 +613,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+  },
+  ormCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.bgCard3,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    marginHorizontal: Spacing.md,
+    marginTop: Spacing.md,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  ormCardPR: {
+    borderColor: Colors.accentGlow,
+    backgroundColor: Colors.accentGlow2,
+  },
+  prBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.accent,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: Radius.sm,
+    ...Shadow.accentGlow,
+  },
+  prBadgeText: {
+    color: '#000',
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.bold,
   },
   setLabels: {
     flexDirection: 'row',

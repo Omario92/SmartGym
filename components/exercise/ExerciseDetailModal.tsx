@@ -21,6 +21,8 @@ import { Text } from '@/components/ui/Text';
 import { Badge } from '@/components/ui/Badge';
 import { ExerciseImage } from './ExerciseImage';
 import type { Exercise, CustomExercise } from '@/lib/exercises';
+import { useStore, selectExercisePRs, getExercise1RMHistory } from '@/store';
+import { LineChart } from '@/components/ui/LineChart';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -48,6 +50,9 @@ export const ExerciseDetailModal: React.FC<ExerciseDetailModalProps> = ({
   onEdit,
   onDelete,
 }) => {
+  const prs = useStore(selectExercisePRs);
+  const exercisePR = exercise ? prs[exercise.id] : null;
+
   if (!exercise) return null;
 
   const handleDelete = () => {
@@ -148,6 +153,31 @@ export const ExerciseDetailModal: React.FC<ExerciseDetailModalProps> = ({
                   </Text>
                 </View>
               ))}
+            </View>
+          )}
+
+          {/* 1RM History */}
+          {exercisePR && (
+            <View style={styles.section}>
+              <Text semibold style={styles.sectionTitle}>
+                Strength Progress (1RM)
+              </Text>
+              <View style={styles.prSummary}>
+                <View>
+                  <Text color="secondary" style={{ fontSize: FontSize.xs, marginBottom: 2 }}>All-Time PR</Text>
+                  <Text variant="h3" color="accent">{exercisePR.oneRM.toFixed(1)} kg</Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text color="secondary" style={{ fontSize: FontSize.xs, marginBottom: 2 }}>Best Set</Text>
+                  <Text semibold>{exercisePR.weight} kg × {exercisePR.reps}</Text>
+                </View>
+              </View>
+              <View style={{ marginTop: Spacing.sm }}>
+                <LineChart 
+                  data={getExercise1RMHistory(useStore.getState(), exercise.id)} 
+                  unit="kg" 
+                />
+              </View>
             </View>
           )}
 
@@ -286,5 +316,13 @@ const styles = StyleSheet.create({
   deleteBtnText: {
     color: Colors.error,
     fontWeight: FontWeight.semibold,
+  },
+  prSummary: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: Colors.bgCard2,
+    padding: Spacing.md,
+    borderRadius: Radius.md,
   },
 });

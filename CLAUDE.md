@@ -82,3 +82,15 @@ Always import from `lib/theme.ts`. Never hardcode hex values elsewhere.
 ## Recent changes
 <!-- Update this section after each significant edit -->
 ```
+- [v2.6] UI/UX Refinements & Quality of Life:
+  - Added ability to set custom Rest Time per exercise during active workouts.
+  - Improved Measures Line Chart to scale proportionally from left to right for small datasets.
+  - Added smooth slide-to-reveal animations for deleting Measure Logs.
+  - Fixed Routine Builder UI distortions (Filter Pills, duplicate + signs, Safe Area on Modals).
+- [v2.5] Implemented 1RM Tracking:
+  - Created lib/1rm.ts for Epley, Brzycki, Lombardi calculations.
+  - Upgraded store/index.ts (v4) with exercisePRs and automated PR tracking on finish.
+  - Added real-time 1RM card with Reanimated PR badge in app/workout/active.tsx.
+  - Created components/ui/LineChart.tsx (SVG) for strength progression.
+  - Added Strength Progress tab in app/history.tsx and detail view in ExerciseDetailModal.tsx.
+  - Added 1RM form

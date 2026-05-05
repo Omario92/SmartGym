@@ -135,6 +135,7 @@ const ExercisePickerModal: React.FC<{
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
+              style={{ flexGrow: 0, minHeight: 50 }}
               contentContainerStyle={styles.muscleFilters}
             >
               <TouchableOpacity
@@ -165,7 +166,7 @@ const ExercisePickerModal: React.FC<{
             >
               <Ionicons name="add" size={18} color="#000" />
               <Text style={{ color: '#000', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>
-                + Create Custom Exercise
+                Create Custom Exercise
               </Text>
             </TouchableOpacity>
 
@@ -645,7 +646,9 @@ const styles = StyleSheet.create({
   },
   muscleChip: {
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: Radius.full,
     backgroundColor: Colors.bgCard,
     borderWidth: 1,

@@ -9,6 +9,7 @@ import { immer } from 'zustand/middleware/immer';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { CustomExercise } from '@/lib/exercises';
+import { type OneRMFormula, calculate1RM } from '@/lib/1rm';
 
 // ─── Draft exercise (unsaved form state) ─────────────────────────────────────
 export interface CustomExerciseDraft {
@@ -34,6 +35,7 @@ export interface SetLog {
 export interface ExerciseLog {
   exerciseId: string;
   exerciseName: string;
+  restSeconds?: number;
   sets: SetLog[];
 }
 
@@ -111,6 +113,16 @@ export interface AppSettings {
   showTour: boolean;
   isPremium: boolean;
   language: string;
+  oneRmFormula: OneRMFormula;
+}
+
+export interface ExercisePR {
+  oneRM: number;
+  date: string;
+  weight: number;
+  reps: number;
+  formula: OneRMFormula;
+  bestSetDate: string;
 }
 
 // ─── Store Interface ──────────────────────────────────────────────────────────
@@ -143,10 +155,14 @@ interface SmartGymState {
   // Draft custom exercise (unsaved form)
   customExerciseDraft: CustomExerciseDraft | null;
 
+  // 1RM Personal Records mapped by exerciseId
+  exercisePRs: Record<string, ExercisePR>;
+
   // ─── Actions ─────────────────────────────────────────────────────────
 
   // Settings
   updateSettings: (settings: Partial<AppSettings>) => void;
+  updateOneRmFormula: (formula: OneRMFormula) => void;
   setFirstLaunch: (value: boolean) => void;
   startTour: () => void;
   endTour: () => void;
@@ -177,6 +193,7 @@ interface SmartGymState {
   startWorkout: (routine: Routine | { name: string; exercises: ExerciseLog[] }) => void;
   updateSet: (exerciseIndex: number, setIndex: number, data: Partial<SetLog>) => void;
   addSet: (exerciseIndex: number) => void;
+  updateExerciseRestTime: (exerciseIndex: number, restSeconds: number) => void;
   nextExercise: () => void;
   finishWorkout: () => void;
   cancelWorkout: () => void;
@@ -208,6 +225,7 @@ const initialSettings: AppSettings = {
   showTour: true,
   isPremium: false,
   language: 'en',
+  oneRmFormula: 'epley',
 };
 
 // Sample routines — only used on first ever launch (before persist kicks in)
@@ -247,11 +265,17 @@ export const useStore = create<SmartGymState>()(
       measures: [],
       favoriteExerciseIds: [],
       customExerciseDraft: null,
+      exercisePRs: {},
 
       // ── Settings ──
       updateSettings: (updates) =>
         set((state) => {
           Object.assign(state.settings, updates);
+        }),
+      
+      updateOneRmFormula: (formula) =>
+        set((state) => {
+          state.settings.oneRmFormula = formula;
         }),
 
       setFirstLaunch: (value) =>
@@ -376,6 +400,7 @@ export const useStore = create<SmartGymState>()(
           const exercises: ExerciseLog[] = routine.exercises.map((e) => ({
             exerciseId: e.exerciseId,
             exerciseName: e.exerciseName,
+            restSeconds: e.restSeconds,
             sets: Array.from({ length: e.sets }, (_, i) => ({
               id: `${Date.now()}-${i}`,
               weight: e.weight ?? 0,
@@ -424,6 +449,13 @@ export const useStore = create<SmartGymState>()(
           }
         }),
 
+      updateExerciseRestTime: (exerciseIndex, restSeconds) =>
+        set((state) => {
+          if (state.activeWorkout) {
+            state.activeWorkout.exercises[exerciseIndex].restSeconds = restSeconds;
+          }
+        }),
+
       nextExercise: () =>
         set((state) => {
           if (state.activeWorkout) {
@@ -460,6 +492,38 @@ export const useStore = create<SmartGymState>()(
         };
 
         set((state) => {
+          // Process 1RM PRs for each exercise in this session
+          workout.exercises.forEach((ex) => {
+            let sessionMax1RM = 0;
+            let bestWeight = 0;
+            let bestReps = 0;
+            
+            ex.sets.forEach((s) => {
+              if (s.completed && s.weight > 0 && s.reps > 0) {
+                const oneRM = calculate1RM(s.weight, s.reps, state.settings.oneRmFormula);
+                if (oneRM > sessionMax1RM) {
+                  sessionMax1RM = oneRM;
+                  bestWeight = s.weight;
+                  bestReps = s.reps;
+                }
+              }
+            });
+
+            if (sessionMax1RM > 0) {
+              const currentPR = state.exercisePRs[ex.exerciseId];
+              if (!currentPR || sessionMax1RM > currentPR.oneRM) {
+                state.exercisePRs[ex.exerciseId] = {
+                  oneRM: sessionMax1RM,
+                  date: session.startedAt,
+                  weight: bestWeight,
+                  reps: bestReps,
+                  formula: state.settings.oneRmFormula,
+                  bestSetDate: session.startedAt,
+                };
+              }
+            }
+          });
+
           state.sessions.unshift(session);
           state.activeWorkout = null;
         });
@@ -530,7 +594,7 @@ export const useStore = create<SmartGymState>()(
     {
       name: 'smartgym-store-v1',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 3,
+      version: 4,
 
       /**
        * Only persist data that should survive app restarts.
@@ -545,6 +609,7 @@ export const useStore = create<SmartGymState>()(
         isFirstLaunch: state.isFirstLaunch,
         favoriteExerciseIds: state.favoriteExerciseIds,
         customExerciseDraft: state.customExerciseDraft,
+        exercisePRs: state.exercisePRs,
       }),
 
       /**
@@ -559,6 +624,12 @@ export const useStore = create<SmartGymState>()(
         if (fromVersion < 3) {
           if (!s.favoriteExerciseIds) s.favoriteExerciseIds = [];
           if (s.customExerciseDraft === undefined) s.customExerciseDraft = null;
+        }
+        if (fromVersion < 4) {
+          if (!s.exercisePRs) s.exercisePRs = {};
+          if (s.settings && !s.settings.oneRmFormula) {
+            s.settings.oneRmFormula = 'epley';
+          }
         }
         return s as SmartGymState;
       },
@@ -584,3 +655,45 @@ export const selectTour = (s: SmartGymState) => ({
 });
 export const selectFavoriteIds = (s: SmartGymState) => s.favoriteExerciseIds;
 export const selectCustomExerciseDraft = (s: SmartGymState) => s.customExerciseDraft;
+export const selectExercisePRs = (s: SmartGymState) => s.exercisePRs;
+
+export const getExercise1RMHistory = (s: SmartGymState, exerciseId: string) => {
+  const history: { date: string; value: number; weight: number; reps: number }[] = [];
+  const formula = s.settings.oneRmFormula;
+  
+  // Iterate sessions chronologically (oldest to newest) to plot progression
+  const sortedSessions = [...s.sessions].sort(
+    (a, b) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime()
+  );
+
+  sortedSessions.forEach(session => {
+    const exerciseLogs = session.exercises.filter((e) => e.exerciseId === exerciseId);
+    let sessionMax1RM = 0;
+    let bestWeight = 0;
+    let bestReps = 0;
+    
+    exerciseLogs.forEach(log => {
+      log.sets.forEach(set => {
+        if (set.completed && set.weight > 0 && set.reps > 0) {
+          const oneRM = calculate1RM(set.weight, set.reps, formula);
+          if (oneRM > sessionMax1RM) {
+            sessionMax1RM = oneRM;
+            bestWeight = set.weight;
+            bestReps = set.reps;
+          }
+        }
+      });
+    });
+
+    if (sessionMax1RM > 0) {
+      history.push({
+        date: session.startedAt,
+        value: sessionMax1RM,
+        weight: bestWeight,
+        reps: bestReps,
+      });
+    }
+  });
+
+  return history;
+};

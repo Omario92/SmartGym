@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Polyline, Line, Circle } from 'react-native-svg';
+import Reanimated, { useAnimatedStyle, withTiming, useSharedValue } from 'react-native-reanimated';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { Card } from '@/components/ui/Card';
@@ -77,7 +78,7 @@ const AddMeasureModal: React.FC<{
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <KeyboardAvoidingView
         style={{ flex: 1, backgroundColor: Colors.bgModal }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
           {/* Modal Header */}
@@ -141,15 +142,17 @@ const MiniLineChart: React.FC<{ values: number[]; color?: string }> = ({
   const max = Math.max(...values);
   const range = max - min || 1;
 
+  const xMaxIndex = Math.max(9, values.length - 1);
+
   const points = values
     .map((v, i) => {
-      const x = (i / (values.length - 1)) * W;
+      const x = (i / xMaxIndex) * W;
       const y = H - ((v - min) / range) * H;
       return `${x},${y}`;
     })
     .join(' ');
 
-  const lastX = ((values.length - 1) / (values.length - 1)) * W;
+  const lastX = ((values.length - 1) / xMaxIndex) * W;
   const lastY = H - ((values[values.length - 1] - min) / range) * H;
 
   return (
@@ -157,6 +160,63 @@ const MiniLineChart: React.FC<{ values: number[]; color?: string }> = ({
       <Polyline points={points} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
       <Circle cx={lastX} cy={lastY} r={4} fill={color} />
     </Svg>
+  );
+};
+
+// ─── Measure Log Item ──────────────────────────────────────────────────────────
+
+const MeasureLogItem: React.FC<{
+  m: BodyMeasure;
+  isDeleting: boolean;
+  onLongPress: () => void;
+  onPress: () => void;
+  onDelete: () => void;
+}> = ({ m, isDeleting, onLongPress, onPress, onDelete }) => {
+  const translateX = useSharedValue(0);
+
+  React.useEffect(() => {
+    translateX.value = withTiming(isDeleting ? -80 : 0, { duration: 250 });
+  }, [isDeleting]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
+
+  return (
+    <View style={styles.logEntryContainer}>
+      <View style={styles.logEntryDeleteBg}>
+        <TouchableOpacity style={styles.logEntryDeleteBtn} onPress={onDelete}>
+          <Ionicons name="trash" size={24} color="#FFF" />
+        </TouchableOpacity>
+      </View>
+
+      <Reanimated.View style={[styles.logEntryForeground, animatedStyle]}>
+        <TouchableOpacity activeOpacity={1} onLongPress={onLongPress} onPress={onPress} style={{ padding: Spacing.md }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text color="muted" style={{ fontSize: FontSize.sm }}>
+              {new Date(m.date).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              })}
+            </Text>
+          </View>
+          <View style={styles.logValues}>
+            {MEASURE_FIELDS.map((field) => {
+              const val = (m as any)[field.key];
+              if (val != null) {
+                return (
+                  <Text key={field.key} style={{ fontSize: FontSize.sm }}>
+                    {field.icon} {val} {field.unit}
+                  </Text>
+                );
+              }
+              return null;
+            })}
+          </View>
+        </TouchableOpacity>
+      </Reanimated.View>
+    </View>
   );
 };
 
@@ -207,8 +267,10 @@ const MeasureRow: React.FC<{
 export default function MeasuresScreen() {
   const measures = useStore(s => s.measures);
   const addMeasure = useStore(s => s.addMeasure);
+  const deleteMeasure = useStore(s => s.deleteMeasure);
 
   const [showModal, setShowModal] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleSave = (measure: Omit<BodyMeasure, 'id'>) => {
     addMeasure({ ...measure, id: Date.now().toString() });
@@ -337,26 +399,19 @@ export default function MeasuresScreen() {
               <Text semibold>Log</Text>
             </View>
             {measures.slice(0, 10).map((m) => (
-              <View key={m.id} style={styles.logEntry}>
-                <Text color="muted" style={{ fontSize: FontSize.sm }}>
-                  {new Date(m.date).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                  })}
-                </Text>
-                <View style={styles.logValues}>
-                  {m.weight && (
-                    <Text style={{ fontSize: FontSize.sm }}>⚖️ {m.weight} kg</Text>
-                  )}
-                  {m.bodyFat && (
-                    <Text style={{ fontSize: FontSize.sm }}>📊 {m.bodyFat}%</Text>
-                  )}
-                  {m.chest && (
-                    <Text style={{ fontSize: FontSize.sm }}>💪 {m.chest} cm</Text>
-                  )}
-                </View>
-              </View>
+              <MeasureLogItem
+                key={m.id}
+                m={m}
+                isDeleting={deletingId === m.id}
+                onLongPress={() => setDeletingId(m.id)}
+                onPress={() => {
+                  if (deletingId) setDeletingId(null);
+                }}
+                onDelete={() => {
+                  deleteMeasure(m.id);
+                  setDeletingId(null);
+                }}
+              />
             ))}
           </>
         )}
@@ -421,11 +476,26 @@ const styles = StyleSheet.create({
   measureValueRow: { flexDirection: 'row', alignItems: 'center' },
 
   sectionHeader: { marginBottom: Spacing.sm },
-  logEntry: {
+  logEntryContainer: {
+    marginBottom: Spacing.sm,
+    borderRadius: Radius.md,
+    backgroundColor: '#FF453A',
+    overflow: 'hidden',
+  },
+  logEntryDeleteBg: {
+    ...StyleSheet.absoluteFillObject,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  logEntryDeleteBtn: {
+    width: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+  },
+  logEntryForeground: {
     backgroundColor: Colors.bgCard,
     borderRadius: Radius.md,
-    padding: Spacing.md,
-    marginBottom: Spacing.sm,
     borderWidth: 1,
     borderColor: Colors.border,
   },

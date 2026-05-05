@@ -81,7 +81,7 @@ function ExercisePicker({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <View style={styles.pickerContainer}>
+      <SafeAreaView style={styles.pickerContainer} edges={['top', 'bottom']}>
         {/* Header */}
         <View style={styles.pickerHeader}>
           <Text variant="h3" color="primary">Add Exercise</Text>
@@ -146,7 +146,7 @@ function ExercisePicker({
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              style={styles.chipRow}
+              style={[styles.chipRow, { flexGrow: 0, minHeight: 40 }]}
               contentContainerStyle={{ paddingHorizontal: Spacing.md }}
             >
               <TouchableOpacity
@@ -177,7 +177,7 @@ function ExercisePicker({
             <TouchableOpacity style={styles.pickerFab} onPress={handleNavigateCreate}>
               <Ionicons name="add" size={18} color="#000" />
               <Text style={{ color: '#000', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>
-                + Create Custom Exercise
+                Create Custom Exercise
               </Text>
             </TouchableOpacity>
 
@@ -229,7 +229,7 @@ function ExercisePicker({
             />
           </>
         )}
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 }
@@ -668,7 +668,9 @@ const styles = StyleSheet.create({
   chipRow: { marginBottom: Spacing.sm },
   chip: {
     paddingHorizontal: 14,
-    paddingVertical: 6,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: Radius.full,
     borderWidth: 1,
     borderColor: Colors.border,
