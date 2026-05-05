@@ -4,18 +4,18 @@ A **premium, production-ready fitness tracking app** built with Expo SDK 55 + Re
 
 ## ✨ Features
 
+- **v2.1 Cloud Custom Exercises** — Supabase backend to sync, create, edit, and share custom exercises across devices
 - **Full Routine Builder** — Create workouts with exercises, sets, reps, weight, rest timers
 - **1RM Calculator** — Integrated calculator for One-Rep Max with safety percentages (v2.0.0)
 - **v1.5 Premium Exercise Library** — 35+ high-quality exercises with high-resolution images
 - **Advanced Search & Filter** — Deep filtering by muscle, difficulty, and equipment
-- **Custom Exercise System** — Create and manage your own custom exercises
 - **Live Workout Session** — Set-by-set logging with custom per-exercise rest timers and animated progress
 - **Guided Onboarding Tour** — 7-step spotlight tour on first launch
 - **Explore Tab** — Featured programs, quick workouts, and browse by muscle group
 - **History & Analytics** — Weekly heatmap, volume charts, and monthly summary
 - **Body Measurements** — Track body measurements with smooth trend charts and interactive logs
 - **Premium Design** — Dark mode, neon green accent (#00FF9D), and Dynamic Island support
-- **Store Persistence** — All your data is saved locally using Zustand + AsyncStorage
+- **Hybrid Storage** — Cloud sync via Supabase and local persistence using Zustand + AsyncStorage
 
 ## 🚀 Quick Start
 
@@ -151,7 +151,6 @@ eas build --platform all
 
 ## 🔮 Roadmap (Not Yet Implemented)
 
-- [ ] expo-sqlite + drizzle-orm persistence (currently in-memory Zustand)
 - [ ] Real Gemini AI integration for Smart Trainer
 - [ ] Push notifications for rest timer
 - [ ] iCloud / Google Drive backup

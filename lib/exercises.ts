@@ -59,6 +59,8 @@ export interface CustomExercise extends Exercise {
   notes?: string;
   /** Whether the image was uploaded locally (file URI vs remote URL) */
   imageIsLocal?: boolean;
+  /** True when this exercise originated from Supabase cloud (not purely local) */
+  isCloud?: boolean;
 }
 
 const _EXERCISES: RawExercise[] = [

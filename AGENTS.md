@@ -82,6 +82,23 @@ Always import from `lib/theme.ts`. Never hardcode hex values elsewhere.
 ## Recent changes
 <!-- Update this section after each significant edit -->
 ```
+- [v2.1] Cloud Backend (Supabase) Integration:
+  - Synced Cloud Exercises into CustomExerciseManager (routine picker): cloud+local merged, de-duplicated by id.
+  - Added isCloud flag to CustomExercise type and cloudExerciseToCustom mapper.
+  - Created lib/supabase.ts (Supabase client with AsyncStorage session persistence).
+  - Created lib/supabaseTypes.ts (DB row types, CloudExercise unified type, AuthUser).
+  - Created lib/exerciseMapper.ts (DB row ↔ app type converters).
+  - Created lib/exerciseService.ts (React Query hooks: useMyCustomExercises, useCreateExercise, useUpdateExercise, useArchiveExercise + syncLocalCustomExercisesToSupabase migration helper).
+  - Created lib/mediaUploadService.ts (image/GIF/video upload to Supabase Storage with validation).
+  - Created app/auth/_layout.tsx, app/auth/login.tsx, app/auth/register.tsx (Email, Google, Apple Sign In + Guest mode).
+  - Created app/exercise/create.tsx (cloud save when authed, local fallback when guest).
+  - Created app/exercise/[id].tsx (view/edit/archive cloud exercise).
+  - Created components/exercise/ExerciseForm.tsx (controlled form with react-hook-form).
+  - Created components/exercise/ExerciseMediaPicker.tsx + ExerciseMediaPreview.tsx.
+  - Extended store/index.ts (v5) with authUser, syncStatus, localSyncDone + auth actions.
+  - Updated app/_layout.tsx with QueryClientProvider + Supabase auth state listener.
+  - Added Account section to More tab (sign in/out, cloud exercises).
+  - Installed expo-auth-session, expo-crypto.
 - [v2.6] UI/UX Refinements & Quality of Life:
   - Added ability to set custom Rest Time per exercise during active workouts.
   - Improved Measures Line Chart to scale proportionally from left to right for small datasets.

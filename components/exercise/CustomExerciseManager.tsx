@@ -13,7 +13,9 @@ import {
   StyleSheet,
   Alert,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
+import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/lib/theme';
@@ -21,6 +23,8 @@ import { Text } from '@/components/ui/Text';
 import { ExerciseImage } from './ExerciseImage';
 import { useStore, selectCustomExercises } from '@/store';
 import { MUSCLE_GROUPS, EQUIPMENT_LABELS, type CustomExercise, type MuscleGroup, type Equipment } from '@/lib/exercises';
+import { useMyCustomExercises } from '@/lib/exerciseService';
+import { cloudExerciseToCustom } from '@/lib/exerciseMapper';
 
 interface CustomExerciseManagerProps {
   onSelect?: (exercise: CustomExercise) => void;
@@ -48,11 +52,26 @@ export const CustomExerciseManager: React.FC<CustomExerciseManagerProps> = ({
   onEdit,
   standalone = false,
 }) => {
-  const customExercises = useStore(selectCustomExercises);
+  const authUser = useStore((s) => s.authUser);
+  const localCustomExercises = useStore(selectCustomExercises);
   const deleteCustomExercise = useStore((s) => s.deleteCustomExercise);
   const duplicateCustomExercise = useStore((s) => s.duplicateCustomExercise);
   const toggleFavorite = useStore((s) => s.toggleFavoriteExercise);
   const favoriteIds = useStore((s) => s.favoriteExerciseIds);
+
+  // Cloud exercises from Supabase
+  const { data: cloudExercises, isLoading: cloudLoading } = useMyCustomExercises(
+    authUser?.id ?? null
+  );
+
+  // Merge: cloud exercises take priority (de-duplicate by id)
+  const customExercises = useMemo(() => {
+    const cloudConverted = (cloudExercises ?? []).map(cloudExerciseToCustom);
+    const cloudIds = new Set(cloudConverted.map((e) => e.id));
+    // Keep local-only ones that aren't already in cloud
+    const localOnly = localCustomExercises.filter((e) => !cloudIds.has(e.id));
+    return [...cloudConverted, ...localOnly];
+  }, [cloudExercises, localCustomExercises]);
 
   const [search, setSearch] = useState('');
   const [muscleFilter, setMuscleFilter] = useState<MuscleGroup | null>(null);
@@ -98,6 +117,7 @@ export const CustomExerciseManager: React.FC<CustomExerciseManagerProps> = ({
 
   const renderItem = ({ item }: { item: CustomExercise }) => {
     const isFav = favoriteIds.includes(item.id);
+    const isCloud = item.isCloud === true;
     return (
       <Animated.View entering={FadeIn.duration(250)}>
         <TouchableOpacity
@@ -119,9 +139,17 @@ export const CustomExerciseManager: React.FC<CustomExerciseManagerProps> = ({
               <Text semibold style={styles.itemName} numberOfLines={1}>
                 {item.name}
               </Text>
-              <View style={styles.customBadge}>
-                <Text style={styles.customBadgeText}>✨</Text>
-              </View>
+              {/* Source badge */}
+              {isCloud ? (
+                <View style={styles.cloudBadge}>
+                  <Ionicons name="cloud-done-outline" size={10} color={Colors.accent} />
+                  <Text style={styles.cloudBadgeText}>Cloud</Text>
+                </View>
+              ) : (
+                <View style={styles.customBadge}>
+                  <Text style={styles.customBadgeText}>✨</Text>
+                </View>
+              )}
             </View>
             <Text color="muted" style={styles.itemMeta}>
               {item.muscleGroup.replace(/_/g, ' ')} · {item.equipment.replace(/_/g, ' ')}
@@ -147,38 +175,52 @@ export const CustomExerciseManager: React.FC<CustomExerciseManagerProps> = ({
 
           {/* Actions */}
           <View style={styles.itemActions}>
-            <TouchableOpacity
-              style={styles.actionBtn}
-              onPress={() => toggleFavorite(item.id)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Ionicons
-                name={isFav ? 'heart' : 'heart-outline'}
-                size={16}
-                color={isFav ? Colors.error : Colors.textMuted}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.actionBtn}
-              onPress={() => onEdit(item)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Ionicons name="pencil" size={15} color={Colors.textSecondary} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.actionBtn}
-              onPress={() => handleDuplicate(item)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Ionicons name="copy-outline" size={15} color={Colors.info} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.actionBtnDanger]}
-              onPress={() => handleDelete(item)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Ionicons name="trash-outline" size={15} color={Colors.error} />
-            </TouchableOpacity>
+            {isCloud ? (
+              // Cloud exercises: tap to open cloud detail/edit screen
+              <TouchableOpacity
+                style={styles.actionBtn}
+                onPress={() => router.push({ pathname: '/exercise/[id]', params: { id: item.id } })}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="open-outline" size={16} color={Colors.accent} />
+              </TouchableOpacity>
+            ) : (
+              // Local exercises: full action set
+              <>
+                <TouchableOpacity
+                  style={styles.actionBtn}
+                  onPress={() => toggleFavorite(item.id)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons
+                    name={isFav ? 'heart' : 'heart-outline'}
+                    size={16}
+                    color={isFav ? Colors.error : Colors.textMuted}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.actionBtn}
+                  onPress={() => onEdit(item)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="pencil" size={15} color={Colors.textSecondary} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.actionBtn}
+                  onPress={() => handleDuplicate(item)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="copy-outline" size={15} color={Colors.info} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.actionBtnDanger]}
+                  onPress={() => handleDelete(item)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="trash-outline" size={15} color={Colors.error} />
+                </TouchableOpacity>
+              </>
+            )}
             {onSelect && (
               <Ionicons
                 name="add-circle"
@@ -200,6 +242,26 @@ export const CustomExerciseManager: React.FC<CustomExerciseManagerProps> = ({
         <Ionicons name="add-circle" size={20} color="#000" />
         <Text style={styles.createBtnText}>Create New Exercise</Text>
       </TouchableOpacity>
+
+      {/* Cloud loading indicator */}
+      {cloudLoading && (
+        <View style={styles.cloudStatus}>
+          <ActivityIndicator size="small" color={Colors.accent} />
+          <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, marginLeft: 6 }}>
+            Syncing cloud exercises…
+          </Text>
+        </View>
+      )}
+
+      {/* Cloud exercises count badge */}
+      {!cloudLoading && authUser && (cloudExercises ?? []).length > 0 && (
+        <View style={styles.cloudStatus}>
+          <Ionicons name="cloud-done-outline" size={14} color={Colors.accent} />
+          <Text style={{ fontSize: FontSize.xs, color: Colors.accent, marginLeft: 4 }}>
+            {(cloudExercises ?? []).length} cloud exercise{(cloudExercises ?? []).length !== 1 ? 's' : ''} synced
+          </Text>
+        </View>
+      )}
 
       {customExercises.length > 0 && (
         <>
@@ -515,6 +577,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   customBadgeText: { fontSize: 11 },
+  cloudBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: Colors.accent + '22',
+    borderRadius: Radius.full,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: Colors.accent + '44',
+  },
+  cloudBadgeText: { fontSize: 9, color: Colors.accent, fontWeight: FontWeight.bold },
+  cloudStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.sm,
+  },
 
   // Empty
   empty: { alignItems: 'center', padding: Spacing.xxxl },

@@ -25,6 +25,7 @@ import { Badge } from '@/components/ui/Badge';
 import { CustomExerciseManager } from '@/components/exercise/CustomExerciseManager';
 import { GlobalExerciseSearch } from '@/components/exercise/GlobalExerciseSearch';
 import { useStore, selectCustomExercises, selectFavoriteIds } from '@/store';
+import { supabase } from '@/lib/supabase';
 
 // ─── Row Components ───────────────────────────────────────────────────────────
 
@@ -179,6 +180,8 @@ export default function MoreScreen() {
   const startTour = useStore(s => s.startTour);
   const customExercises = useStore(selectCustomExercises);
   const favoriteIds = useStore(selectFavoriteIds);
+  const authUser = useStore(s => s.authUser);
+  const clearAuthUser = useStore(s => s.clearAuthUser);
 
   const [myExercisesVisible, setMyExercisesVisible] = useState(false);
   const [favSearchVisible, setFavSearchVisible] = useState(false);
@@ -206,6 +209,20 @@ export default function MoreScreen() {
       { text: 'Kilograms (kg)', onPress: () => updateSettings({ weightUnit: 'kg' }) },
       { text: 'Pounds (lbs)', onPress: () => updateSettings({ weightUnit: 'lbs' }) },
       { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const handleSignOut = async () => {
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: async () => {
+          await supabase.auth.signOut();
+          clearAuthUser();
+        },
+      },
     ]);
   };
 
@@ -309,6 +326,43 @@ export default function MoreScreen() {
             <Text style={styles.settingLabel}>Create New Exercise</Text>
             <Ionicons name="chevron-forward" size={16} color={Colors.accent} />
           </TouchableOpacity>
+        </Card>
+
+        {/* Account Section */}
+        <SectionHeader title="Account" />
+        <Card style={styles.section} noPadding>
+          {authUser ? (
+            <>
+              <View style={styles.settingRow}>
+                <View style={styles.settingIcon}>
+                  <Text style={{ fontSize: 18 }}>👤</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.settingLabel}>{authUser.displayName ?? 'My Account'}</Text>
+                  <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>{authUser.email}</Text>
+                </View>
+              </View>
+              <View style={styles.divider} />
+              <SettingRow
+                icon="☁️"
+                label="My Cloud Exercises"
+                onPress={() => router.push('/exercise/my-exercises' as never)}
+              />
+              <View style={styles.divider} />
+              <SettingRow
+                icon="🚪"
+                label="Sign Out"
+                destructive
+                onPress={handleSignOut}
+              />
+            </>
+          ) : (
+            <SettingRow
+              icon="🔑"
+              label="Sign In / Create Account"
+              onPress={() => router.push('/auth/login')}
+            />
+          )}
         </Card>
 
         {/* Profile Section */}

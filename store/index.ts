@@ -10,6 +10,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { CustomExercise } from '@/lib/exercises';
 import { type OneRMFormula, calculate1RM } from '@/lib/1rm';
+import type { AuthUser } from '@/lib/supabaseTypes';
 
 // ─── Draft exercise (unsaved form state) ─────────────────────────────────────
 export interface CustomExerciseDraft {
@@ -158,6 +159,11 @@ interface SmartGymState {
   // 1RM Personal Records mapped by exerciseId
   exercisePRs: Record<string, ExercisePR>;
 
+  // ── Auth (Supabase) ──────────────────────────────────────────────────────
+  authUser: AuthUser | null;
+  syncStatus: 'idle' | 'syncing' | 'done' | 'error';
+  localSyncDone: boolean; // true once local→cloud migration has run
+
   // ─── Actions ─────────────────────────────────────────────────────────
 
   // Settings
@@ -210,6 +216,12 @@ interface SmartGymState {
   addMeasure: (measure: BodyMeasure) => void;
   updateMeasure: (id: string, updates: Partial<BodyMeasure>) => void;
   deleteMeasure: (id: string) => void;
+
+  // Auth
+  setAuthUser: (user: AuthUser | null) => void;
+  clearAuthUser: () => void;
+  setSyncStatus: (status: 'idle' | 'syncing' | 'done' | 'error') => void;
+  setLocalSyncDone: (done: boolean) => void;
 }
 
 // ─── Initial State ────────────────────────────────────────────────────────────
@@ -266,6 +278,9 @@ export const useStore = create<SmartGymState>()(
       favoriteExerciseIds: [],
       customExerciseDraft: null,
       exercisePRs: {},
+      authUser: null,
+      syncStatus: 'idle',
+      localSyncDone: false,
 
       // ── Settings ──
       updateSettings: (updates) =>
@@ -590,11 +605,34 @@ export const useStore = create<SmartGymState>()(
         set((state) => {
           state.measures = state.measures.filter((m) => m.id !== id);
         }),
+
+      // ── Auth ──────────────────────────────────────────────────────────────
+
+      setAuthUser: (user) =>
+        set((state) => {
+          state.authUser = user;
+        }),
+
+      clearAuthUser: () =>
+        set((state) => {
+          state.authUser = null;
+          state.syncStatus = 'idle';
+        }),
+
+      setSyncStatus: (status) =>
+        set((state) => {
+          state.syncStatus = status;
+        }),
+
+      setLocalSyncDone: (done) =>
+        set((state) => {
+          state.localSyncDone = done;
+        }),
     })),
     {
       name: 'smartgym-store-v1',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 4,
+      version: 5,
 
       /**
        * Only persist data that should survive app restarts.
@@ -610,6 +648,8 @@ export const useStore = create<SmartGymState>()(
         favoriteExerciseIds: state.favoriteExerciseIds,
         customExerciseDraft: state.customExerciseDraft,
         exercisePRs: state.exercisePRs,
+        authUser: state.authUser,
+        localSyncDone: state.localSyncDone,
       }),
 
       /**
@@ -631,12 +671,18 @@ export const useStore = create<SmartGymState>()(
             s.settings.oneRmFormula = 'epley';
           }
         }
+        if (fromVersion < 5) {
+          // v2.1: Add auth fields
+          if (s.authUser === undefined) (s as Partial<SmartGymState>).authUser = null;
+          if ((s as Partial<SmartGymState>).localSyncDone === undefined) (s as Partial<SmartGymState>).localSyncDone = false;
+        }
         return s as SmartGymState;
       },
     }
   )
 );
 
+// bump version to 5
 // ─── Hydration helper ────────────────────────────────────────────────────────
 // Call this in components to know when AsyncStorage data has been loaded.
 export const useStoreHydrated = () => useStore.persist.hasHydrated();
