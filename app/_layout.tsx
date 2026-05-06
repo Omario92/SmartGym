@@ -16,6 +16,7 @@ import { Colors } from '@/lib/theme';
 import { useStore } from '@/store';
 import { GuidedTour } from '@/components/tour/GuidedTour';
 import { supabase } from '@/lib/supabase';
+import { SyncProvider } from '@/components/sync/SyncProvider';
 
 const FIRST_LAUNCH_KEY = '@smartgym_first_launch';
 
@@ -95,7 +96,8 @@ export default function RootLayout() {
       <GestureHandlerRootView style={styles.root}>
         <SafeAreaProvider>
           <StatusBar style="light" backgroundColor={Colors.bg} />
-          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.bg } }}>
+          <SyncProvider>
+            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.bg } }}>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="auth" options={{ headerShown: false }} />
             <Stack.Screen
@@ -158,6 +160,7 @@ export default function RootLayout() {
               }}
             />
           </Stack>
+          </SyncProvider>
 
           {/* Guided tour overlay */}
           <GuidedTour />

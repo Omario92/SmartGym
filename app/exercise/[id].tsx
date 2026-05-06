@@ -61,6 +61,16 @@ export default function ExerciseDetailScreen() {
     if (exercise?.media) setMedia(exercise.media);
   }, [exercise?.media]);
 
+  // ─── Hero media (first image, gif, or video) ───────────────────────────
+  const heroMedia = media[0] ?? (exercise?.image ? { url: exercise.image, type: 'image' } : null);
+
+  // Setup video player if hero is a video
+  const player = useVideoPlayer(heroMedia?.type === 'video' ? heroMedia.url : null, (player) => {
+    player.loop = true;
+    player.muted = true;
+    player.play();
+  });
+
   // ─── Handlers ─────────────────────────────────────────────────────────────
 
   const handleSave = async (values: ExerciseFormValues) => {
@@ -106,8 +116,10 @@ export default function ExerciseDetailScreen() {
             try {
               await archiveMutation.mutateAsync(id);
               router.back();
-            } catch {
-              Alert.alert('Error', 'Could not delete exercise. Please try again.');
+            } catch (err: unknown) {
+              const msg = err instanceof Error ? err.message : String(err);
+              console.error('Archive error:', msg);
+              Alert.alert('Error', `Could not delete exercise. ${msg}`);
             }
           },
         },
@@ -150,16 +162,6 @@ export default function ExerciseDetailScreen() {
       </SafeAreaView>
     );
   }
-
-  // ─── Hero media (first image, gif, or video) ───────────────────────────
-  const heroMedia = media[0] ?? (exercise.image ? { url: exercise.image, type: 'image' } : null);
-
-  // Setup video player if hero is a video
-  const player = useVideoPlayer(heroMedia?.type === 'video' ? heroMedia.url : null, (player) => {
-    player.loop = true;
-    player.muted = true;
-    player.play();
-  });
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -240,7 +242,7 @@ export default function ExerciseDetailScreen() {
               <VideoView
                 player={player}
                 style={styles.heroImage}
-                contentMode="cover"
+                contentFit="cover"
                 allowsFullscreen
                 allowsPictureInPicture
               />

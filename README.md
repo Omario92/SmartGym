@@ -4,19 +4,21 @@ A **premium, production-ready fitness tracking app** built with Expo SDK 55 + Re
 
 ## ✨ Features
 
-- **v3.0 AI Smart Trainer** — AI routine generator, auto-fill capabilities, and smart weekly planning via **OpenRouter** (Gemini, Claude, GPT, Gemma support)
-- **v2.1 Cloud Custom Exercises** — Supabase backend to sync, create, edit, and share custom exercises with **Full Video Support** & Automatic Thumbnails
-- **Full Routine Builder** — Create workouts with exercises, sets, reps, weight, rest timers
-- **1RM Calculator** — Integrated calculator for One-Rep Max with safety percentages (v2.0.0)
-- **v1.5 Premium Exercise Library** — 35+ high-quality exercises with high-resolution images
-- **Advanced Search & Filter** — Deep filtering by muscle, difficulty, and equipment
-- **Live Workout Session** — Set-by-set logging with custom per-exercise rest timers and animated progress
-- **Guided Onboarding Tour** — 7-step spotlight tour on first launch
-- **Explore Tab** — Featured programs, quick workouts, and browse by muscle group
-- **History & Analytics** — Weekly heatmap, volume charts, and monthly summary
-- **Body Measurements** — Track body measurements with smooth trend charts and interactive logs
-- **Premium Design** — Dark mode, neon green accent (#00FF9D), and Dynamic Island support
-- **Hybrid Storage** — Cloud sync via Supabase and local persistence using Zustand + AsyncStorage
+- **v5.0 Production Architecture** — Scalable multi-layer architecture: Domain Types → API → Cache → Repository → Service → Store.
+- **v4.0 Offline-First Cloud Sync** — Robust synchronization engine with conflict resolution, background sync, and exponential backoff retry queue.
+- **v3.1 AI Smart Trainer** — AI routine generator and auto-fill capabilities via **OpenRouter** (Gemini, Claude, GPT-4, Llama support).
+- **v3.0 Health Integration** — Cross-platform health sync supporting **Apple HealthKit** (iOS) and **Health Connect** (Android).
+- **v2.5 Google Sheets CMS** — Admin-managed exercise and routine library powered by Google Sheets and Apps Script.
+- **v2.1 Cloud Custom Exercises** — Supabase backend to sync, create, edit, and share custom exercises with **Full Video Support**.
+- **Full Routine Builder** — Create workouts with exercises, sets, reps, weight, and per-exercise rest timers.
+- **1RM Calculator** — Integrated calculator for One-Rep Max with safety percentages.
+- **Premium Exercise Library** — 500+ potential exercises (via CMS) with high-resolution images and videos.
+- **Advanced Search & Filter** — Deep filtering by muscle group, difficulty, and equipment.
+- **Live Workout Session** — Set-by-set logging with animated progress and auto-start rest timers.
+- **Guided Onboarding Tour** — 7-step spotlight tour for new users.
+- **History & Analytics** — Weekly volume charts, heatmap, and monthly summary logs.
+- **Body Measurements** — Track 9 body metrics with interactive trend charts.
+- **Premium Design** — Sleek dark mode with neon green accent (#00FF9D) and glassmorphism UI.
 
 ## 🚀 Quick Start
 
@@ -38,132 +40,55 @@ npx expo run:android
 
 | Layer | Technology |
 |---|---|
-| Framework | Expo SDK 55 + expo-router v4 |
-| Language | TypeScript (strict) |
-| Styling | StyleSheet (dark theme system via `lib/theme.ts`) |
-| AI Service | OpenRouter API (provider-agnostic) |
-| State | Zustand 5 + Immer 10 |
-| Navigation | expo-router (file-based, bottom tabs) |
-| Icons | @expo/vector-icons (Ionicons) |
-| Video | expo-video + expo-video-thumbnails |
-| Image | expo-image (optimized rendering) |
-| Charts | react-native-svg |
-| Storage | @react-native-async-storage/async-storage |
-| Animations | react-native-reanimated + gesture-handler |
+| **Framework** | Expo SDK 55 + expo-router v4 |
+| **Backend** | Supabase (PostgreSQL, Auth, Storage, RLS) |
+| **CMS** | Google Sheets + Apps Script API |
+| **AI Service** | OpenRouter (Unified API for GPT/Claude/Gemini) |
+| **State** | Zustand 5 (Split Domain Stores) + Immer 10 |
+| **Health** | react-native-health (iOS) + react-native-health-connect (Android) |
+| **Storage** | AsyncStorage (Versioned Cache) + Supabase |
+| **Styling** | StyleSheet (Theme-driven Design System) |
+| **Video/Image** | expo-video + expo-image |
+| **Animations** | react-native-reanimated + gesture-handler |
 
-## 📁 Project Structure
+## 📁 Project Structure (v5.0)
 
 ```
 SmartGym/
-├── app/
-│   ├── _layout.tsx          # Root layout + first-launch tour trigger
-│   ├── (tabs)/
-│   │   ├── _layout.tsx      # Bottom tab navigator (5 tabs)
-│   │   ├── index.tsx        # Routines tab
-│   │   ├── explore.tsx      # Explore tab
-│   │   ├── history.tsx      # History & analytics
-│   │   ├── measures.tsx     # Body measurements
-│   │   └── more.tsx         # Settings & more
-│   ├── routine/
-│   │   ├── create.tsx       # Create new routine (modal)
-│   │   └── [id].tsx         # Edit existing routine
-│   └── workout/
-│       ├── active.tsx       # Live workout session (full-screen modal)
-│       └── all-exercises.tsx # Premium Exercise Library (v1.5)
-├── components/
-│   ├── exercise/
-│   │   ├── ExerciseImage.tsx # Shimmering image loader (v1.5)
-│   │   └── ExerciseDetailModal.tsx # Exercise detail view (v1.5)
-│   ├── tour/
-│   │   └── GuidedTour.tsx   # 7-step spotlight onboarding
-│   └── ui/
-│       ├── Text.tsx         # Typography system
-│       ├── Card.tsx         # Card with glow variants
-│       ├── Button.tsx       # Button (6 variants, 3 sizes)
-│       ├── ProgressRing.tsx # SVG circular progress
-│       ├── Badge.tsx        # Pill badges
-│       └── EmptyState.tsx   # Empty state with icon
+├── app/                  # File-based routing (Tabs, Auth, CRUD)
+├── components/           # UI components, AI tools, health cards
 ├── lib/
-│   ├── theme.ts             # Design tokens (colors, spacing, radii)
-│   └── exercises.ts         # 35+ exercise library with metadata
-├── services/
-│   └── ai/
-│       ├── aiService.ts     # Gemini REST client and functions
-│       └── prompts.ts       # AI Prompt builders
-└── store/
-    └── index.ts             # Zustand store (routines, workouts, history, measures, auth, AI)
+│   ├── api/              # Raw data fetch layer (CMS, Supabase)
+│   ├── cache/            # TTL-aware AsyncStorage cache with SWR
+│   ├── health/           # Platform-agnostic health abstraction
+│   ├── repositories/     # Cache-first data access layer
+│   ├── services/         # Business logic & sync orchestration
+│   ├── migration/        # One-time data migration scripts
+│   └── theme.ts          # Centralized Design System tokens
+├── store/                # Split Zustand stores (History, Routine, Exercise, etc.)
+├── supabase/             # SQL migrations and RLS policies
+├── types/                # Unified domain TypeScript interfaces
+└── scripts/              # CMS schemas and Apps Script source
 ```
-
-## 🎨 Design System
-
-```ts
-// Key colors from lib/theme.ts
-Colors.accent          = '#00FF9D'   // Neon green — primary CTA
-Colors.background.primary = '#0A0A0F' // Deep dark background
-Colors.background.card    = '#13131A' // Card surface
-Colors.text.primary       = '#FFFFFF'
-Colors.text.secondary     = '#A0A0B8'
-```
-
-## 📱 Screens Overview
-
-### Routines Tab
-- Empty state with guided tour prompt
-- Searchable routine list with color-coded cards
-- Long-press: Edit / Duplicate / Delete
-- FAB (+) to create a new routine
-
-### Explore Tab
-- AI Smart Trainer teaser (PRO feature)
-- Featured programs (7-Minute Workout, HIIT, Full Body, Strength)
-- Quick workouts grid
-- Browse by muscle group
-
-### History Tab
-- Week/Month/Year selector
-- ProgressRing with workout count vs target
-- SVG volume bar chart (7-day)
-- Sessions log, monthly stats, awards grid
-
-### Measures Tab
-- Add body measurements (9 fields)
-- Weight trend mini line chart
-- Per-metric change delta display
-
-### More Tab
-- Premium upgrade card
-- Workout, app, and notification settings
-- Restart guided tour
-- Export/delete data options
 
 ## 🏋️ Workout Flow
 
-1. **Routines tab** → tap **Start** on a routine
-2. **Active Workout** screen opens full-screen
-3. Log each set (weight + reps), tap ✓ to mark complete
-4. **Rest Timer** auto-starts after each set completion
-5. Tap **Finish** → confirmation → saves to history
+1. **Routines tab** → Select or create a routine.
+2. **Active Workout** → Log sets, weights, and reps.
+3. **Rest Timer** → Auto-starts after marking a set complete.
+4. **Finish** → Calculates 1RM PRs and saves to cloud-synced history.
 
-## 📦 EAS Build
+## 📦 Environment Variables
 
-```bash
-# Install EAS CLI
-npm install -g eas-cli
-
-# Configure
-eas build:configure
-
-# Build for both platforms
-eas build --platform all
+Create a `.env` file:
+```env
+EXPO_PUBLIC_SUPABASE_URL=your_url
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your_key
+EXPO_PUBLIC_CMS_BASE_URL=your_apps_script_url
+EXPO_PUBLIC_AI_PROVIDER=openrouter
+EXPO_PUBLIC_OPENROUTER_API_KEY=your_key
 ```
-
-## 🔮 Roadmap (Not Yet Implemented)
-
-- [ ] Push notifications for rest timer
-- [ ] iCloud / Google Drive backup
-- [ ] Apple Health / Google Fit sync
-- [ ] In-app purchases (RevenueCat) for Premium
 
 ## 📄 License
 
-MIT — built as an open-source Expo starter.
+MIT — Built with ❤️ for the fitness community.

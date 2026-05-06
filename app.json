@@ -42,7 +42,17 @@
           "color": "#00FF9D"
         }
       ],
-      "expo-font"
+      "expo-font",
+      "react-native-health",
+      "react-native-health-connect",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
+        }
+      ]
     ],
     "scheme": "smartgym",
     "experiments": {

@@ -26,6 +26,7 @@ import { CustomExerciseManager } from '@/components/exercise/CustomExerciseManag
 import { GlobalExerciseSearch } from '@/components/exercise/GlobalExerciseSearch';
 import { useStore, selectCustomExercises, selectFavoriteIds } from '@/store';
 import { supabase } from '@/lib/supabase';
+import { HealthSyncCard } from '@/components/health/HealthSyncCard';
 
 // ─── Row Components ───────────────────────────────────────────────────────────
 
@@ -519,6 +520,11 @@ export default function MoreScreen() {
             onPress={() => Linking.openURL('https://smartgym.app/terms')}
           />
         </Card>
+
+        {/* Health Sync */}
+        <View style={{ paddingHorizontal: Spacing.lg }}>
+          <HealthSyncCard />
+        </View>
 
         {/* Danger Zone */}
         <SectionHeader title="Data" />

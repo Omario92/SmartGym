@@ -145,6 +145,11 @@ export const CustomExerciseManager: React.FC<CustomExerciseManagerProps> = ({
                   <Ionicons name="cloud-done-outline" size={10} color={Colors.accent} />
                   <Text style={styles.cloudBadgeText}>Cloud</Text>
                 </View>
+              ) : authUser ? (
+                <View style={[styles.cloudBadge, { borderColor: item.syncStatus === 'synced' ? Colors.success : Colors.warning }]}>
+                  <Ionicons name={item.syncStatus === 'synced' ? "cloud-done-outline" : "cloud-offline-outline"} size={10} color={item.syncStatus === 'synced' ? Colors.success : Colors.warning} />
+                  <Text style={[styles.cloudBadgeText, { color: item.syncStatus === 'synced' ? Colors.success : Colors.warning }]}>{item.syncStatus === 'synced' ? 'Synced' : 'Local'}</Text>
+                </View>
               ) : (
                 <View style={styles.customBadge}>
                   <Text style={styles.customBadgeText}>✨</Text>

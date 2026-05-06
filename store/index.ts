@@ -51,6 +51,11 @@ export interface Routine {
   color: string;
   estimatedDuration?: number; // minutes
   category?: string;
+  // Sync metadata
+  cloudId?: string;
+  updatedAt?: string;
+  deletedAt?: string | null;
+  syncStatus?: 'local' | 'synced' | 'dirty' | 'deleted' | 'conflict';
 }
 
 export interface RoutineExercise {
@@ -74,6 +79,11 @@ export interface WorkoutSession {
   totalVolume?: number; // kg * reps
   totalSets?: number;
   note?: string;
+  // Sync metadata
+  cloudId?: string;
+  updatedAt?: string;
+  deletedAt?: string | null;
+  syncStatus?: 'local' | 'synced' | 'dirty' | 'deleted' | 'conflict';
 }
 
 export interface ActiveWorkout {
@@ -102,6 +112,11 @@ export interface BodyMeasure {
   shoulders?: number;
   neck?: number;
   unit: 'metric' | 'imperial';
+  // Sync metadata
+  cloudId?: string;
+  updatedAt?: string;
+  deletedAt?: string | null;
+  syncStatus?: 'local' | 'synced' | 'dirty' | 'deleted' | 'conflict';
 }
 
 export interface AppSettings {
@@ -128,6 +143,11 @@ export interface ExercisePR {
   reps: number;
   formula: OneRMFormula;
   bestSetDate: string;
+  // Sync metadata
+  cloudId?: string;
+  updatedAt?: string;
+  deletedAt?: string | null;
+  syncStatus?: 'local' | 'synced' | 'dirty' | 'deleted' | 'conflict';
 }
 
 // ─── Store Interface ──────────────────────────────────────────────────────────
@@ -229,6 +249,19 @@ interface SmartGymState {
   clearAuthUser: () => void;
   setSyncStatus: (status: 'idle' | 'syncing' | 'done' | 'error') => void;
   setLocalSyncDone: (done: boolean) => void;
+
+  // Sync Actions
+  replaceExerciseIds: (idMap: Record<string, string>) => void;
+  markEntityDirty: (entityType: 'routine' | 'session' | 'measure' | 'pr' | 'customExercise', id: string) => void;
+  markEntitySynced: (entityType: 'routine' | 'session' | 'measure' | 'pr' | 'customExercise', id: string, cloudId?: string) => void;
+  mergeCloudRoutines: (routines: Routine[]) => void;
+  mergeCloudSessions: (sessions: WorkoutSession[]) => void;
+  mergeCloudMeasures: (measures: BodyMeasure[]) => void;
+  mergeCloudPRs: (prs: Record<string, ExercisePR>) => void;
+  mergeCloudFavorites: (favoriteIds: string[]) => void;
+  softDeleteRoutine: (id: string) => void;
+  softDeleteSession: (id: string) => void;
+  softDeleteMeasure: (id: string) => void;
 
   // AI cache
   setAIWeeklyPlanCache: (data: AISmartWeeklyPlan) => void;
@@ -337,18 +370,26 @@ export const useStore = create<SmartGymState>()(
       // ── Routines ──
       addRoutine: (routine) =>
         set((state) => {
-          state.routines.push(routine);
+          state.routines.push({ ...routine, syncStatus: 'dirty', updatedAt: new Date().toISOString() });
         }),
 
       updateRoutine: (id, updates) =>
         set((state) => {
           const idx = state.routines.findIndex((r) => r.id === id);
-          if (idx !== -1) Object.assign(state.routines[idx], updates);
+          if (idx !== -1) {
+            Object.assign(state.routines[idx], updates, { syncStatus: 'dirty', updatedAt: new Date().toISOString() });
+          }
         }),
 
       deleteRoutine: (id) =>
         set((state) => {
-          state.routines = state.routines.filter((r) => r.id !== id);
+          const r = state.routines.find((r) => r.id === id);
+          if (r && state.authUser) {
+            r.deletedAt = new Date().toISOString();
+            r.syncStatus = 'deleted';
+          } else {
+            state.routines = state.routines.filter((r) => r.id !== id);
+          }
         }),
 
       duplicateRoutine: (id) =>
@@ -588,12 +629,18 @@ export const useStore = create<SmartGymState>()(
       // ── History ──
       addSession: (session) =>
         set((state) => {
-          state.sessions.unshift(session);
+          state.sessions.unshift({ ...session, syncStatus: 'dirty', updatedAt: new Date().toISOString() });
         }),
 
       deleteSession: (id) =>
         set((state) => {
-          state.sessions = state.sessions.filter((s) => s.id !== id);
+          const s = state.sessions.find((s) => s.id === id);
+          if (s && state.authUser) {
+            s.deletedAt = new Date().toISOString();
+            s.syncStatus = 'deleted';
+          } else {
+            state.sessions = state.sessions.filter((s) => s.id !== id);
+          }
         }),
 
       /** Wipe all workout history */
@@ -605,18 +652,26 @@ export const useStore = create<SmartGymState>()(
       // ── Measures ──
       addMeasure: (measure) =>
         set((state) => {
-          state.measures.unshift(measure);
+          state.measures.unshift({ ...measure, syncStatus: 'dirty', updatedAt: new Date().toISOString() });
         }),
 
       updateMeasure: (id, updates) =>
         set((state) => {
           const idx = state.measures.findIndex((m) => m.id === id);
-          if (idx !== -1) Object.assign(state.measures[idx], updates);
+          if (idx !== -1) {
+            Object.assign(state.measures[idx], updates, { syncStatus: 'dirty', updatedAt: new Date().toISOString() });
+          }
         }),
 
       deleteMeasure: (id) =>
         set((state) => {
-          state.measures = state.measures.filter((m) => m.id !== id);
+          const m = state.measures.find((m) => m.id === id);
+          if (m && state.authUser) {
+            m.deletedAt = new Date().toISOString();
+            m.syncStatus = 'deleted';
+          } else {
+            state.measures = state.measures.filter((m) => m.id !== id);
+          }
         }),
 
       // ── Auth ──────────────────────────────────────────────────────────────
@@ -630,6 +685,14 @@ export const useStore = create<SmartGymState>()(
         set((state) => {
           state.authUser = null;
           state.syncStatus = 'idle';
+          state.localSyncDone = false;
+          // Restore to clean guest state
+          state.routines = [];
+          state.customExercises = [];
+          state.sessions = [];
+          state.measures = [];
+          state.favoriteExerciseIds = [];
+          state.exercisePRs = {};
         }),
 
       setSyncStatus: (status) =>
@@ -640,6 +703,170 @@ export const useStore = create<SmartGymState>()(
       setLocalSyncDone: (done) =>
         set((state) => {
           state.localSyncDone = done;
+        }),
+
+      // ── Sync Actions ────────────────────────────────────────────────────────
+      replaceExerciseIds: (idMap) =>
+        set((state) => {
+          // Update custom exercises themselves
+          state.customExercises.forEach((ex) => {
+            if (idMap[ex.id]) {
+              ex.id = idMap[ex.id];
+              ex.cloudId = idMap[ex.id];
+              ex.syncStatus = 'synced';
+            }
+          });
+
+          // Update routines
+          state.routines.forEach((routine) => {
+            routine.exercises.forEach((ex) => {
+              if (idMap[ex.exerciseId]) {
+                ex.exerciseId = idMap[ex.exerciseId];
+              }
+            });
+            routine.syncStatus = 'dirty';
+            routine.updatedAt = new Date().toISOString();
+          });
+
+          // Update active workout
+          if (state.activeWorkout) {
+            state.activeWorkout.exercises.forEach((ex) => {
+              if (idMap[ex.exerciseId]) {
+                ex.exerciseId = idMap[ex.exerciseId];
+              }
+            });
+          }
+
+          // Update sessions
+          state.sessions.forEach((session) => {
+            session.exercises.forEach((ex) => {
+              if (idMap[ex.exerciseId]) {
+                ex.exerciseId = idMap[ex.exerciseId];
+              }
+            });
+            session.syncStatus = 'dirty';
+            session.updatedAt = new Date().toISOString();
+          });
+
+          // Update favorites
+          state.favoriteExerciseIds = state.favoriteExerciseIds.map((id) => idMap[id] || id);
+
+          // Update PRs
+          const newPRs: Record<string, ExercisePR> = {};
+          Object.entries(state.exercisePRs).forEach(([oldId, pr]) => {
+            const newId = idMap[oldId] || oldId;
+            newPRs[newId] = { ...pr, syncStatus: 'dirty', updatedAt: new Date().toISOString() };
+          });
+          state.exercisePRs = newPRs;
+        }),
+
+      markEntityDirty: (entityType, id) =>
+        set((state) => {
+          if (!state.authUser) return; // Only track dirty if auth'd
+          let entity: any = null;
+          if (entityType === 'routine') entity = state.routines.find((r) => r.id === id);
+          if (entityType === 'session') entity = state.sessions.find((s) => s.id === id);
+          if (entityType === 'measure') entity = state.measures.find((m) => m.id === id);
+          if (entityType === 'pr') entity = state.exercisePRs[id];
+          if (entity) {
+            entity.syncStatus = 'dirty';
+            entity.updatedAt = new Date().toISOString();
+          }
+        }),
+
+      markEntitySynced: (entityType, id, cloudId) =>
+        set((state) => {
+          let entity: any = null;
+          if (entityType === 'routine') entity = state.routines.find((r) => r.id === id);
+          if (entityType === 'session') entity = state.sessions.find((s) => s.id === id);
+          if (entityType === 'measure') entity = state.measures.find((m) => m.id === id);
+          if (entityType === 'pr') entity = state.exercisePRs[id];
+          if (entity) {
+            entity.syncStatus = 'synced';
+            if (cloudId) entity.cloudId = cloudId;
+          }
+        }),
+
+      mergeCloudRoutines: (cloudRoutines) =>
+        set((state) => {
+          const map = new Map(state.routines.map((r) => [r.id, r]));
+          cloudRoutines.forEach((cr) => {
+            const existing = map.get(cr.id);
+            if (!existing || new Date(cr.updatedAt || 0) > new Date(existing.updatedAt || 0)) {
+              map.set(cr.id, { ...cr, syncStatus: 'synced' });
+            }
+          });
+          state.routines = Array.from(map.values()).filter(r => !r.deletedAt);
+        }),
+
+      mergeCloudSessions: (cloudSessions) =>
+        set((state) => {
+          const map = new Map(state.sessions.map((s) => [s.id, s]));
+          cloudSessions.forEach((cs) => {
+            const existing = map.get(cs.id);
+            if (!existing || new Date(cs.updatedAt || 0) > new Date(existing.updatedAt || 0)) {
+              map.set(cs.id, { ...cs, syncStatus: 'synced' });
+            }
+          });
+          state.sessions = Array.from(map.values()).filter(s => !s.deletedAt).sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
+        }),
+
+      mergeCloudMeasures: (cloudMeasures) =>
+        set((state) => {
+          const map = new Map(state.measures.map((m) => [m.id, m]));
+          cloudMeasures.forEach((cm) => {
+            const existing = map.get(cm.id);
+            if (!existing || new Date(cm.updatedAt || 0) > new Date(existing.updatedAt || 0)) {
+              map.set(cm.id, { ...cm, syncStatus: 'synced' });
+            }
+          });
+          state.measures = Array.from(map.values()).filter(m => !m.deletedAt).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        }),
+
+      mergeCloudPRs: (cloudPRs) =>
+        set((state) => {
+          Object.entries(cloudPRs).forEach(([id, cPR]) => {
+            const existing = state.exercisePRs[id];
+            if (!existing || new Date(cPR.updatedAt || 0) > new Date(existing.updatedAt || 0)) {
+              if (!cPR.deletedAt) {
+                state.exercisePRs[id] = { ...cPR, syncStatus: 'synced' };
+              } else {
+                delete state.exercisePRs[id];
+              }
+            }
+          });
+        }),
+
+      mergeCloudFavorites: (cloudFavIds) =>
+        set((state) => {
+          state.favoriteExerciseIds = Array.from(new Set([...state.favoriteExerciseIds, ...cloudFavIds]));
+        }),
+
+      softDeleteRoutine: (id) =>
+        set((state) => {
+          const r = state.routines.find((r) => r.id === id);
+          if (r) {
+            r.deletedAt = new Date().toISOString();
+            r.syncStatus = 'deleted';
+          }
+        }),
+
+      softDeleteSession: (id) =>
+        set((state) => {
+          const s = state.sessions.find((s) => s.id === id);
+          if (s) {
+            s.deletedAt = new Date().toISOString();
+            s.syncStatus = 'deleted';
+          }
+        }),
+
+      softDeleteMeasure: (id) =>
+        set((state) => {
+          const m = state.measures.find((m) => m.id === id);
+          if (m) {
+            m.deletedAt = new Date().toISOString();
+            m.syncStatus = 'deleted';
+          }
         }),
 
       // ── AI cache ─────────────────────────────────────────────────────────
@@ -654,6 +881,20 @@ export const useStore = create<SmartGymState>()(
         }),
     })),
     {
+      /**
+       * ARCHITECTURE NOTE (v6):
+       * New split stores have been introduced alongside this monolithic store:
+       *   store/exerciseStore.ts   — catalog + custom exercises + favorites
+       *   store/routineStore.ts    — user routines + saved programs
+       *   store/historyStore.ts    — sessions + active workout + PRs
+       *   store/measureStore.ts    — body measurements
+       *   store/authStore.ts       — auth user
+       *   store/syncStore.ts       — sync queue + status
+       *
+       * This store remains as-is for backward compatibility.
+       * Migrate components to new stores incrementally.
+       * Run lib/migration/v6Migration.ts once on startup to copy persisted data.
+       */
       name: 'smartgym-store-v1',
       storage: createJSONStorage(() => AsyncStorage),
       version: 5,

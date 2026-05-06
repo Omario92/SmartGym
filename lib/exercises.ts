@@ -61,6 +61,11 @@ export interface CustomExercise extends Exercise {
   imageIsLocal?: boolean;
   /** True when this exercise originated from Supabase cloud (not purely local) */
   isCloud?: boolean;
+  // Sync metadata
+  cloudId?: string;
+  updatedAt?: string;
+  deletedAt?: string | null;
+  syncStatus?: 'local' | 'synced' | 'dirty' | 'deleted' | 'conflict';
 }
 
 const _EXERCISES: RawExercise[] = [
@@ -669,3 +674,42 @@ export const findExerciseById = (
   customExercises: CustomExercise[]
 ): Exercise | undefined =>
   EXERCISES.find((e) => e.id === id) ?? customExercises.find((e) => e.id === id);
+
+// ─── v6: Cloud-aware helpers ──────────────────────────────────────────────────
+// These helpers allow gradual adoption of the new exerciseStore/exerciseService
+// without breaking existing callers of EXERCISES.
+
+/**
+ * Get all exercises including cloud catalog exercises.
+ * During Phase 1 (local-only): returns same as getAllExercises()
+ * During Phase 2+ (with cloud): merges local and cloud catalog,
+ *   cloud exercises take precedence for matching IDs.
+ *
+ * @param customExercises — user custom exercises from store
+ * @param catalogExercises — cloud catalog exercises from exerciseStore (optional)
+ */
+export const getAllExercisesWithCloud = (
+  customExercises: CustomExercise[],
+  catalogExercises?: Exercise[]
+): Exercise[] => {
+  const catalog = catalogExercises && catalogExercises.length > 0
+    ? catalogExercises
+    : EXERCISES;
+
+  const customIds = new Set(customExercises.map((e) => e.id));
+  return [...catalog.filter((e) => !customIds.has(e.id)), ...customExercises];
+};
+
+/**
+ * Find exercise by ID, checking cloud catalog first, then local, then custom.
+ */
+export const findExerciseByIdWithCloud = (
+  id: string,
+  customExercises: CustomExercise[],
+  catalogExercises?: Exercise[]
+): Exercise | undefined => {
+  const cloudMatch = catalogExercises?.find((e) => e.id === id);
+  if (cloudMatch) return cloudMatch;
+  return findExerciseById(id, customExercises);
+};
+
