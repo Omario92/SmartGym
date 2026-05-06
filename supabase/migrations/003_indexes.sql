@@ -43,7 +43,7 @@ create index if not exists idx_routines_user_updated
 -- ── routine_exercises ─────────────────────────────────────────────────────────
 
 create index if not exists idx_routine_exercises_routine_id
-  on public.routine_exercises (routine_id, display_order);
+  on public.routine_exercises (routine_id, sort_order);
 
 create index if not exists idx_routine_exercises_exercise_id
   on public.routine_exercises (exercise_id);
@@ -67,14 +67,11 @@ create index if not exists idx_workout_sessions_user_id
 create index if not exists idx_workout_sessions_user_started
   on public.workout_sessions (user_id, started_at desc) where deleted_at is null;
 
-create index if not exists idx_workout_sessions_dirty
-  on public.workout_sessions (user_id, sync_status)
-  where sync_status in ('dirty', 'deleted');
 
 -- ── workout_exercise_logs ────────────────────────────────────────────────────
 
 create index if not exists idx_workout_exercise_logs_session_id
-  on public.workout_exercise_logs (session_id, display_order);
+  on public.workout_exercise_logs (session_id, sort_order);
 
 create index if not exists idx_workout_exercise_logs_exercise_id
   on public.workout_exercise_logs (exercise_id);
@@ -82,7 +79,7 @@ create index if not exists idx_workout_exercise_logs_exercise_id
 -- ── workout_set_logs ─────────────────────────────────────────────────────────
 
 create index if not exists idx_workout_set_logs_exercise_log_id
-  on public.workout_set_logs (exercise_log_id, set_order);
+  on public.workout_set_logs (exercise_log_id, sort_order);
 
 -- ── body_measures ────────────────────────────────────────────────────────────
 

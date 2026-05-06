@@ -87,5 +87,9 @@ Always import from `lib/theme.ts`. Never hardcode hex values.
 - [v4.0] Offline-First Cloud Sync & Health Integration:
   - Sync engine with background recovery.
 - [v3.1] AI OpenRouter Migration & Video Enhancements:
-  - Provider-agnostic AI, native expo-video integration.
+- [v5.1] Bug Fixes & Stability:
+  - Fixed native crash on Android when checking Health Connect permissions on mount.
+  - Fixed soft-deleted routines appearing in the Routines list.
+  - Fixed crash when starting a featured program from the Explore tab.
+  - Fixed invalid VideoView props and database index errors.
 ```

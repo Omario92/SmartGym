@@ -116,7 +116,7 @@ const RoutineCard: React.FC<{ routine: Routine; onPress: () => void; onMore: () 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function RoutinesScreen() {
-  const routines = useStore(s => s.routines);
+  const routines = useStore(s => s.routines).filter(r => !r.deletedAt);
   const startTour = useStore(s => s.startTour);
   const deleteRoutine = useStore(s => s.deleteRoutine);
   const duplicateRoutine = useStore(s => s.duplicateRoutine);
@@ -125,8 +125,9 @@ export default function RoutinesScreen() {
 
   const filtered = routines.filter(
     (r) =>
-      r.name.toLowerCase().includes(search.toLowerCase()) ||
-      (r.description || '').toLowerCase().includes(search.toLowerCase())
+      !r.deletedAt &&
+      (r.name.toLowerCase().includes(search.toLowerCase()) ||
+        (r.description || '').toLowerCase().includes(search.toLowerCase()))
   );
 
   const handleStartWorkout = (routine: Routine) => {

@@ -6,7 +6,7 @@
 import React, { useState, useRef } from 'react';
 import {
   View, ScrollView, StyleSheet, TouchableOpacity,
-  Dimensions, Alert, Animated,
+  Dimensions, Alert, Animated, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -22,6 +22,9 @@ import { AIGeneratorModal } from '@/components/ai/AIGeneratorModal';
 import { useStore, selectCustomExercises } from '@/store';
 import type { Routine, RoutineExercise } from '@/store';
 import { EXERCISES } from '@/lib/exercises';
+import { routineRepository } from '@/lib/repositories/routineRepository';
+import { exerciseRepository } from '@/lib/repositories/exerciseRepository';
+import { useFocusEffect } from 'expo-router';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -292,25 +295,71 @@ export default function ExploreScreen() {
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [searchVisible, setSearchVisible] = useState(false);
   const [aiModalVisible, setAiModalVisible] = useState(false);
+  const [dynamicPrograms, setDynamicPrograms] = useState<Routine[]>([]);
+  const [allExercises, setAllExercises] = useState<Exercise[]>(EXERCISES);
+  const [loading, setLoading] = useState(false);
 
-  const categoriesWithCount = React.useMemo(() => {
-    const allEx = [...EXERCISES, ...customExercises];
-    return EXERCISE_CATEGORIES.map(cat => ({
-      ...cat,
-      count: allEx.filter(e => e.muscleGroup === cat.id).length
-    }));
-  }, [customExercises]);
-
-  const handleSaveToRoutines = (program: typeof FEATURED_PROGRAMS[0]) => {
-    const routine = programToRoutine(program);
-    addRoutine(routine);
-    setSavedIds((prev) => new Set(prev).add(program.id));
-    showToast(`✅ "${program.title}" saved to Routines!`);
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [routines, exercises] = await Promise.all([
+        routineRepository.getExploreRoutines(),
+        exerciseRepository.getAll(),
+      ]);
+      
+      if (routines.length > 0) setDynamicPrograms(routines);
+      if (exercises.length > 0) setAllExercises(exercises);
+    } catch (err) {
+      console.error('Failed to load explore data:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleStartProgram = (program: typeof FEATURED_PROGRAMS[0]) => {
-    Alert.alert(program.title, `${program.description}\n\nDuration: ${program.duration} min\nCalories: ~${program.calories} kcal`, [
-      { text: 'Start Now', onPress: () => {} },
+  useFocusEffect(
+    React.useCallback(() => {
+      loadData();
+    }, [])
+  );
+
+  const categoriesWithCount = React.useMemo(() => {
+    const combined = [...allExercises, ...customExercises];
+    return EXERCISE_CATEGORIES.map(cat => ({
+      ...cat,
+      count: combined.filter(e => e.muscleGroup === cat.id).length
+    }));
+  }, [allExercises, customExercises]);
+
+  const handleSaveToRoutines = (program: any) => {
+    // Check if it's a dynamic routine (Routine type) or a hardcoded program
+    const routine = Array.isArray((program as any).exercises)
+      ? (program as Routine)
+      : programToRoutine(program as typeof FEATURED_PROGRAMS[0]);
+    
+    addRoutine({
+      ...routine,
+      id: `saved_${routine.id}_${Date.now()}`, // Ensure unique ID for saved copy
+    });
+    setSavedIds((prev) => new Set(prev).add(program.id));
+    showToast(`✅ "${routine.name}" saved to Routines!`);
+  };
+
+  const handleStartProgram = (program: any) => {
+    const title = program.title || program.name;
+    const desc = program.description;
+    const dur = program.duration || program.estimatedDuration;
+    
+    Alert.alert(title, `${desc}\n\nDuration: ${dur} min`, [
+      { 
+        text: 'Start Now', 
+        onPress: () => {
+          const routine = Array.isArray((program as any).exercises)
+            ? (program as Routine)
+            : programToRoutine(program as typeof FEATURED_PROGRAMS[0]);
+          startWorkout(routine);
+          router.push('/workout/active');
+        } 
+      },
       {
         text: 'Save to Routines',
         onPress: () => handleSaveToRoutines(program),
@@ -416,7 +465,7 @@ export default function ExploreScreen() {
           </Text>
           <View style={styles.globalSearchBadge}>
             <Text style={{ color: Colors.accent, fontSize: FontSize.xs, fontWeight: FontWeight.bold }}>
-              {EXERCISES.length + customExercises.length}
+              {allExercises.length + customExercises.length}
             </Text>
           </View>
         </TouchableOpacity>
@@ -510,15 +559,65 @@ export default function ExploreScreen() {
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-          {FEATURED_PROGRAMS.map((p) => (
-            <ProgramCard
-              key={p.id}
-              program={p}
-              saved={savedIds.has(p.id)}
-              onStart={() => handleStartProgram(p)}
-              onSave={() => handleSaveToRoutines(p)}
-            />
-          ))}
+          {loading && dynamicPrograms.length === 0 ? (
+            <View style={{ width: 200, height: 180, justifyContent: 'center', alignItems: 'center' }}>
+              <ActivityIndicator color={Colors.accent} />
+            </View>
+          ) : dynamicPrograms.length > 0 ? (
+            dynamicPrograms.map((p) => (
+              <TouchableOpacity 
+                key={p.id} 
+                onPress={() => handleStartProgram(p)} 
+                activeOpacity={0.85} 
+                style={styles.programCard}
+              >
+                <View style={[styles.programCardBg, { borderColor: (p.color || Colors.accent) + '33' }]}>
+                  <View style={[styles.programCardTop, { backgroundColor: (p.color || Colors.accent) + '15' }]}>
+                    <Text style={styles.programEmoji}>💪</Text>
+                    <Badge
+                      label={p.difficulty || 'Intermediate'}
+                      variant={p.difficulty === 'beginner' ? 'accent' : p.difficulty === 'intermediate' ? 'info' : 'error'}
+                    />
+                  </View>
+                  <View style={styles.programCardContent}>
+                    <Text variant="h4" style={{ marginBottom: 4 }}>{p.name}</Text>
+                    <Text color="secondary" numberOfLines={2} style={{ fontSize: FontSize.sm, marginBottom: Spacing.md }}>
+                      {p.description}
+                    </Text>
+                    <View style={styles.programStats}>
+                      <View style={styles.programStat}>
+                        <Ionicons name="time-outline" size={13} color={Colors.textMuted} />
+                        <Text color="muted" style={{ fontSize: FontSize.xs, marginLeft: 3 }}>{p.estimatedDuration} min</Text>
+                      </View>
+                      <View style={styles.programStat}>
+                        <Ionicons name="barbell-outline" size={13} color={Colors.textMuted} />
+                        <Text color="muted" style={{ fontSize: FontSize.xs, marginLeft: 3 }}>{p.exercises.length} exercises</Text>
+                      </View>
+                    </View>
+                    <View style={styles.programActions}>
+                      <TouchableOpacity
+                        style={[styles.programStartBtn, { backgroundColor: p.color || Colors.accent, flex: 1 }]}
+                        onPress={() => handleStartProgram(p)} activeOpacity={0.8}>
+                        <Text style={{ color: '#000', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>
+                          Start Workout
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))
+          ) : (
+            FEATURED_PROGRAMS.map((p) => (
+              <ProgramCard
+                key={p.id}
+                program={p}
+                saved={savedIds.has(p.id)}
+                onStart={() => handleStartProgram(p)}
+                onSave={() => handleSaveToRoutines(p)}
+              />
+            ))
+          )}
         </ScrollView>
 
         {/* Quick Workouts */}

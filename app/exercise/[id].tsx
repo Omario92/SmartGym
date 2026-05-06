@@ -243,8 +243,6 @@ export default function ExerciseDetailScreen() {
                 player={player}
                 style={styles.heroImage}
                 contentFit="cover"
-                allowsFullscreen
-                allowsPictureInPicture
               />
             ) : (
               <Image

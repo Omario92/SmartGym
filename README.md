@@ -4,6 +4,7 @@ A **premium, production-ready fitness tracking app** built with Expo SDK 55 + Re
 
 ## ✨ Features
 
+- **v5.1 Stability & Bug Fixes** — Resolved critical native Android crashes with Health Connect, fixed UI rendering bugs for soft-deleted routines, and addressed type mismatches in Explore screens.
 - **v5.0 Production Architecture** — Scalable multi-layer architecture: Domain Types → API → Cache → Repository → Service → Store.
 - **v4.0 Offline-First Cloud Sync** — Robust synchronization engine with conflict resolution, background sync, and exponential backoff retry queue.
 - **v3.1 AI Smart Trainer** — AI routine generator and auto-fill capabilities via **OpenRouter** (Gemini, Claude, GPT-4, Llama support).

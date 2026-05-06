@@ -11,25 +11,39 @@ create extension if not exists "pg_trgm"; -- for fuzzy text search
 -- ENUMS
 -- ============================================================
 
-create type muscle_group as enum (
-  'chest', 'back', 'shoulders', 'arms',
-  'legs', 'core', 'glutes', 'cardio', 'full_body'
-);
+do $$ begin
+  create type muscle_group as enum (
+    'chest', 'back', 'shoulders', 'arms',
+    'legs', 'core', 'glutes', 'cardio', 'full_body'
+  );
+exception when duplicate_object then null; end $$;
 
-create type equipment_type as enum (
-  'barbell', 'dumbbell', 'machine', 'cable',
-  'bodyweight', 'kettlebell', 'resistance_band', 'smith_machine', 'other'
-);
+do $$ begin
+  create type equipment_type as enum (
+    'barbell', 'dumbbell', 'machine', 'cable',
+    'bodyweight', 'kettlebell', 'resistance_band', 'smith_machine', 'other'
+  );
+exception when duplicate_object then null; end $$;
 
-create type exercise_type as enum ('strength', 'cardio', 'flexibility');
+do $$ begin
+  create type exercise_type as enum ('strength', 'cardio', 'flexibility');
+exception when duplicate_object then null; end $$;
 
-create type exercise_difficulty as enum ('beginner', 'intermediate', 'advanced');
+do $$ begin
+  create type exercise_difficulty as enum ('beginner', 'intermediate', 'advanced');
+exception when duplicate_object then null; end $$;
 
-create type exercise_source as enum ('default', 'cms', 'custom', 'cloud');
+do $$ begin
+  create type exercise_source as enum ('default', 'cms', 'custom', 'cloud');
+exception when duplicate_object then null; end $$;
 
-create type routine_source as enum ('user', 'default', 'explore', 'imported', 'ai');
+do $$ begin
+  create type routine_source as enum ('user', 'default', 'explore', 'imported', 'ai');
+exception when duplicate_object then null; end $$;
 
-create type sync_status as enum ('local', 'synced', 'dirty', 'deleted', 'conflict');
+do $$ begin
+  create type sync_status as enum ('local', 'synced', 'dirty', 'deleted', 'conflict');
+exception when duplicate_object then null; end $$;
 
 -- ============================================================
 -- TABLE: profiles

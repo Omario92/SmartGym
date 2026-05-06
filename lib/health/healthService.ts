@@ -180,7 +180,10 @@ class AndroidHealthService implements IHealthService {
     permissions: HealthPermission[]
   ): Promise<Record<HealthPermission, HealthPermissionStatus>> {
     try {
-      const { initialize, requestPermission } = await import('react-native-health-connect');
+      const { initialize, requestPermission, getSdkStatus, SdkStatus } = await import('react-native-health-connect');
+      const status = await getSdkStatus();
+      if (status !== SdkStatus.SDK_AVAILABLE) throw new Error('SDK not available');
+      
       await initialize();
       const hcPermissions = permissions.flatMap((p) => this._mapPermission(p));
       const granted = await requestPermission(hcPermissions as any);
@@ -195,7 +198,25 @@ class AndroidHealthService implements IHealthService {
   async checkPermissions(
     permissions: HealthPermission[]
   ): Promise<Record<HealthPermission, HealthPermissionStatus>> {
-    return this.requestPermissions(permissions);
+    try {
+      const { initialize, getGrantedPermissions, getSdkStatus, SdkStatus } = await import('react-native-health-connect');
+      const status = await getSdkStatus();
+      if (status !== SdkStatus.SDK_AVAILABLE) throw new Error('SDK not available');
+      
+      await initialize();
+      const granted = await getGrantedPermissions();
+      return Object.fromEntries(
+        permissions.map((p) => {
+          const required = this._mapPermission(p);
+          const isGranted = required.every(req => 
+            granted.some((g: any) => g.recordType === req.recordType && g.accessType === req.accessType)
+          );
+          return [p, isGranted ? 'granted' : 'notDetermined'];
+        })
+      ) as Record<HealthPermission, HealthPermissionStatus>;
+    } catch {
+      return Object.fromEntries(permissions.map((p) => [p, 'notDetermined'])) as Record<HealthPermission, HealthPermissionStatus>;
+    }
   }
 
   async saveWorkout(workout: HealthWorkout): Promise<boolean> {
