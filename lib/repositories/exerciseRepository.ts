@@ -71,11 +71,16 @@ class ExerciseRepository {
   async getById(id: string, customExercises: CustomExercise[] = []): Promise<Exercise | undefined> {
     const cached = await getCachedExercises();
     if (cached) {
-      return cached.exercises.find((e) => e.id === id) ?? customExercises.find((e) => e.id === id);
+      const found = cached.exercises.find((e) => e.id === id);
+      if (found) return found;
     }
-    // Fallback to local mapped exercises
+    
+    const customFound = customExercises.find((e) => e.id === id);
+    if (customFound) return customFound;
+
+    // Fallback to local mapped exercises if not found in cache or custom
     const localMapped = this._mapLocalExercises();
-    return localMapped.find((e) => e.id === id) ?? customExercises.find((e) => e.id === id);
+    return localMapped.find((e) => e.id === id);
   }
 
   /**

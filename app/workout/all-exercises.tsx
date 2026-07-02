@@ -63,6 +63,7 @@ export default function AllExercisesScreen() {
   );
 
   const filtered = useMemo(() => {
+    console.log('[AllExercises] Filter trigger - allExercises size:', allExercises.length, 'selectedMuscle:', selectedMuscle, 'search:', search);
     return allExercises.filter((e) => {
       const q = search.toLowerCase();
       const matchSearch =
@@ -73,7 +74,11 @@ export default function AllExercisesScreen() {
       const matchMuscle = !selectedMuscle || e.muscleGroup === selectedMuscle;
       const matchDiff = !selectedDifficulty || e.difficulty === selectedDifficulty;
       const matchEquip = !selectedEquipment || e.equipment === selectedEquipment;
-      return matchSearch && matchMuscle && matchDiff && matchEquip;
+      const res = matchSearch && matchMuscle && matchDiff && matchEquip;
+      if (e.muscleGroup === 'chest') {
+        console.log(`[AllExercises] Checking ${e.name}: matchSearch=${matchSearch}, matchMuscle=${matchMuscle} (e.muscleGroup=${e.muscleGroup}, selectedMuscle=${selectedMuscle}), matchDiff=${matchDiff}, matchEquip=${matchEquip} -> res=${res}`);
+      }
+      return res;
     });
   }, [allExercises, search, selectedMuscle, selectedDifficulty, selectedEquipment]);
 

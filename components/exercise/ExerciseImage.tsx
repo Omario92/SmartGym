@@ -32,6 +32,7 @@ export const ExerciseImage: React.FC<ExerciseImageProps> = ({
   style,
   borderRadius = Radius.lg,
 }) => {
+  console.log('[ExerciseImage] URI passed:', uri);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -100,7 +101,8 @@ export const ExerciseImage: React.FC<ExerciseImageProps> = ({
             style={{ width, height, borderRadius }}
             resizeMode="cover"
             onLoad={handleLoad}
-            onError={() => {
+            onError={(e) => {
+              console.log('[ExerciseImage] Load error for URI:', uri, '| nativeEvent:', e.nativeEvent);
               setError(true);
               setLoaded(true);
             }}

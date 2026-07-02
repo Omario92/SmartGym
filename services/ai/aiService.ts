@@ -216,12 +216,13 @@ export async function generateRoutine(
 
 // ─── Feature 2: Auto-Fill Exercise ───────────────────────────────────────────
 
-export async function fillExerciseDetails(
+export async function generateExerciseFill(
+  apiKey: string,
   exerciseName: string,
   muscleGroup: string,
-  apiKey: string
+  equipment: string
 ): Promise<AIExerciseFill> {
-  const prompt = buildExerciseFillPrompt(exerciseName, muscleGroup);
+  const prompt = buildExerciseFillPrompt(exerciseName, muscleGroup, equipment);
   return callAI<AIExerciseFill>(apiKey, prompt);
 }
 

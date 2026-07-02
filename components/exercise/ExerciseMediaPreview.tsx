@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
   },
   typeText: { fontSize: 9, color: '#fff', fontWeight: '700', letterSpacing: 0.5 },
   playOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(0,0,0,0.25)',

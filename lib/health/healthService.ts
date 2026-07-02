@@ -180,9 +180,9 @@ class AndroidHealthService implements IHealthService {
     permissions: HealthPermission[]
   ): Promise<Record<HealthPermission, HealthPermissionStatus>> {
     try {
-      const { initialize, requestPermission, getSdkStatus, SdkStatus } = await import('react-native-health-connect');
+      const { initialize, requestPermission, getSdkStatus, SdkAvailabilityStatus } = await import('react-native-health-connect');
       const status = await getSdkStatus();
-      if (status !== SdkStatus.SDK_AVAILABLE) throw new Error('SDK not available');
+      if (status !== SdkAvailabilityStatus.SDK_AVAILABLE) throw new Error('SDK not available');
       
       await initialize();
       const hcPermissions = permissions.flatMap((p) => this._mapPermission(p));
@@ -199,9 +199,9 @@ class AndroidHealthService implements IHealthService {
     permissions: HealthPermission[]
   ): Promise<Record<HealthPermission, HealthPermissionStatus>> {
     try {
-      const { initialize, getGrantedPermissions, getSdkStatus, SdkStatus } = await import('react-native-health-connect');
+      const { initialize, getGrantedPermissions, getSdkStatus, SdkAvailabilityStatus } = await import('react-native-health-connect');
       const status = await getSdkStatus();
-      if (status !== SdkStatus.SDK_AVAILABLE) throw new Error('SDK not available');
+      if (status !== SdkAvailabilityStatus.SDK_AVAILABLE) throw new Error('SDK not available');
       
       await initialize();
       const granted = await getGrantedPermissions();

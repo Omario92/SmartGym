@@ -5,6 +5,7 @@
 
 import type { Exercise, CustomExercise } from './exercises';
 import type { ExerciseRow, ExerciseInsert, CloudExercise, MediaItem } from './supabaseTypes';
+import { getExerciseImage, EXERCISE_FALLBACK_IMAGE } from './exerciseImages';
 
 // ─── DB → App ─────────────────────────────────────────────────────────────────
 
@@ -12,6 +13,11 @@ export function dbRowToCloudExercise(row: ExerciseRow): CloudExercise {
   const media: MediaItem[] = Array.isArray(row.media) ? row.media : [];
   const imageItem = media.find((m) => m.type === 'image');
   const gifItem = media.find((m) => m.type === 'gif');
+
+  // Normalize name to snake_case slug as a backup key (since row.id might be a random UUID)
+  const nameSlug = row.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/(^_+|_+$)/g, '');
+  const idImage = getExerciseImage(row.id);
+  const resolvedImage = imageItem?.url ?? gifItem?.thumbnailUrl ?? (idImage !== EXERCISE_FALLBACK_IMAGE ? idImage : getExerciseImage(nameSlug));
 
   return {
     id: row.id,
@@ -24,7 +30,7 @@ export function dbRowToCloudExercise(row: ExerciseRow): CloudExercise {
     instructions: Array.isArray(row.instructions) ? row.instructions : [],
     tips: Array.isArray(row.tips) ? row.tips : [],
     difficulty: row.difficulty,
-    image: imageItem?.url ?? gifItem?.thumbnailUrl ?? '',
+    image: resolvedImage,
     gif: gifItem?.url,
     media,
     source: row.is_public && !row.created_by ? 'default' : 'custom',

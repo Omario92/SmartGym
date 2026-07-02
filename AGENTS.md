@@ -1,7 +1,7 @@
 # SmartGym — Agent Context
 
 ## Stack
-- Expo SDK 55 + React Native 0.76.5 + expo-router v4 (file-based routing)
+- Expo SDK 57 + React Native 0.86.0 + expo-router v57 (file-based routing)
 - TypeScript strict mode
 - Zustand 5 + Immer 10 (split stores), AsyncStorage (versioned cache)
 - Supabase (PostgreSQL + RLS + Auth + Storage)
@@ -70,6 +70,26 @@ Always import from `lib/theme.ts`. Never hardcode hex values.
 
 ## Recent changes
 ```
+- [v5.5] Database Seed & Fallback Alignment:
+  - Created automatic PostgreSQL SQL seed script for `catalog_exercises` mapping real Unsplash images and stable UUIDs.
+  - Saved SQL seed script to `supabase/seed_catalog.sql` for easy manual execution on Supabase SQL Editor.
+  - Fixed cache fallback logic in `exerciseRepository.getById` to prevent missing exercises when catalog database has limited entries.
+  - Fixed missing `EXERCISE_FALLBACK_IMAGE` import in `exerciseMapper.ts` causing typecheck errors.
+- [v5.4] UI & UX Refinement:
+  - Deduplicated routines list on the UI to prevent seeding/sync duplicates.
+  - Redesigned Coach AI Card with proper card styling (bgCard2, border light, pill button).
+  - Fixed corner rounding bug of left color bar in RoutineCard by converting it to a standalone View component.
+  - Enhanced floating action button (FAB) shadow effect on dark mode.
+- [v5.3] Upgrade Stack:
+  - Upgraded Expo to SDK 57 (~57.0.1) and React Native to 0.86.0.
+  - Migrated app.json splash screen configuration to the expo-splash-screen config plugin.
+  - Converted local JPG assets disguised as PNGs to real PNG files to satisfy expo-doctor asset checks.
+  - Resolved deprecated StatusBar backgroundColor prop warning.
+  - Fixed StyleSheet.absoluteFillObject references to StyleSheet.absoluteFill for React Native 0.86 compatibility.
+  - Resolved miscellaneous TypeScript errors in services/ai/aiService.ts and services/ai/aiUtils.ts.
+- [v5.2] UI Redesign:
+  - Redesigned `Routines` screen with new Coach AI card, updated header, and full-width Routine cards.
+  - Redesigned `Explore` screen with updated Smart Trainer AI card, vertical Featured Programs list, and new Program card layout.
 - [v5.0] Production Architecture Refactor:
   - NEW: `types/` — full domain type system.
   - NEW: `supabase/migrations/` — 14 tables, RLS, indexes.

@@ -1,5 +1,11 @@
 import React from 'react';
 import { View, ViewProps, StyleSheet, Pressable } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { Colors, Radius, Spacing, Shadow } from '@/lib/theme';
 
 interface CardProps extends ViewProps {
@@ -8,6 +14,8 @@ interface CardProps extends ViewProps {
   premium?: boolean;
   noPadding?: boolean;
 }
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export const Card: React.FC<CardProps> = ({
   onPress,
@@ -18,6 +26,11 @@ export const Card: React.FC<CardProps> = ({
   children,
   ...props
 }) => {
+  const scale = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
   const content = (
     <View
       style={[
@@ -35,12 +48,18 @@ export const Card: React.FC<CardProps> = ({
 
   if (onPress) {
     return (
-      <Pressable
+      <AnimatedPressable
         onPress={onPress}
-        style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}
+        onPressIn={() => {
+          scale.value = withTiming(0.97, { duration: 90 });
+        }}
+        onPressOut={() => {
+          scale.value = withSpring(1, { damping: 14, stiffness: 260 });
+        }}
+        style={animatedStyle}
       >
         {content}
-      </Pressable>
+      </AnimatedPressable>
     );
   }
 

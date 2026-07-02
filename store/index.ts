@@ -152,7 +152,7 @@ export interface ExercisePR {
 
 // ─── Store Interface ──────────────────────────────────────────────────────────
 
-interface SmartGymState {
+export interface SmartGymState {
   // App
   settings: AppSettings;
   isFirstLaunch: boolean;

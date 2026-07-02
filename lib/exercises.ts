@@ -217,7 +217,10 @@ const _EXERCISES: RawExercise[] = [
   }
 ];
 
-export const EXERCISES: Exercise[] = _EXERCISES as Exercise[];
+export const EXERCISES: Exercise[] = _EXERCISES.map((e) => ({
+  ...e,
+  image: e.image && !e.image.startsWith('https://example.com') ? e.image : getExerciseImage(e.id),
+})) as Exercise[];
 
 /** Default (built-in) exercises — same as EXERCISES, typed explicitly */
 export const defaultExercises: Exercise[] = EXERCISES;

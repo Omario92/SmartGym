@@ -26,14 +26,14 @@ export function buildAIContext(state: SmartGymState): AIBuildContext {
   // Recent workout names (last 10 unique)
   const recentWorkoutNames = state.sessions
     .slice(0, 20)
-    .map((s) => s.routineName)
-    .filter((n, i, arr) => arr.indexOf(n) === i)
+    .map((s: any) => s.routineName)
+    .filter((n: string, i: number, arr: string[]) => arr.indexOf(n) === i)
     .slice(0, 10);
 
   // Workout frequency: sessions in the last 30 days
   const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
   const workoutFrequencyLastMonth = state.sessions.filter(
-    (s) => new Date(s.startedAt).getTime() > thirtyDaysAgo
+    (s: any) => new Date(s.startedAt).getTime() > thirtyDaysAgo
   ).length;
 
   // Sessions in last 4 weeks (same as above but stricter label)
@@ -41,7 +41,8 @@ export function buildAIContext(state: SmartGymState): AIBuildContext {
 
   // Build PR map
   const prsByExercise: AIBuildContext['prsByExercise'] = {};
-  for (const [exId, pr] of Object.entries(state.exercisePRs)) {
+  for (const [exId, prVal] of Object.entries(state.exercisePRs)) {
+    const pr = prVal as any;
     prsByExercise[exId] = {
       oneRM: pr.oneRM,
       weight: pr.weight,
@@ -52,7 +53,7 @@ export function buildAIContext(state: SmartGymState): AIBuildContext {
   // Body stats from latest measurement
   const latestMeasure = state.measures[0];
   const olderMeasure = state.measures.find(
-    (m, i) =>
+    (m: any, i: number) =>
       i > 0 &&
       latestMeasure?.weight != null &&
       (m as typeof latestMeasure).weight != null
@@ -70,13 +71,13 @@ export function buildAIContext(state: SmartGymState): AIBuildContext {
       'chest', 'waist', 'hips', 'arms', 'thighs', 'calves', 'shoulders', 'neck',
     ] as const;
     for (const f of fields) {
-      const val = (latestMeasure as Record<string, unknown>)[f];
+      const val = (latestMeasure as any)[f];
       if (typeof val === 'number') measurements[f] = val;
     }
   }
 
   // Exercise library: built-in + custom, deduplicated
-  const customRefs = state.customExercises.map((e) => ({
+  const customRefs = state.customExercises.map((e: any) => ({
     id: e.id,
     name: e.name,
     muscleGroup: e.muscleGroup,
@@ -126,7 +127,7 @@ export function inferFocusMuscles(state: SmartGymState): string[] {
   ];
   for (const m of state.measures) {
     for (const f of muscleFields) {
-      if ((m as Record<string, unknown>)[f] != null) {
+      if ((m as any)[f] != null) {
         counts[f] = (counts[f] ?? 0) + 1;
       }
     }

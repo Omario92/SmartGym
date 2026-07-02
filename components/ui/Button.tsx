@@ -1,18 +1,25 @@
 import React from 'react';
 import {
-  TouchableOpacity,
+  Pressable,
   View,
   ActivityIndicator,
   StyleSheet,
-  TouchableOpacityProps,
+  PressableProps,
 } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import { Colors, Radius, Spacing, FontSize, FontWeight, Shadow } from '@/lib/theme';
 import { Text } from './Text';
 
 type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'premium';
 type Size = 'sm' | 'md' | 'lg';
 
-interface ButtonProps extends TouchableOpacityProps {
+interface ButtonProps extends Omit<PressableProps, 'style'> {
   title: string;
   variant?: Variant;
   size?: Size;
@@ -20,7 +27,11 @@ interface ButtonProps extends TouchableOpacityProps {
   icon?: React.ReactNode;
   iconRight?: React.ReactNode;
   fullWidth?: boolean;
+  style?: PressableProps['style'];
+  haptics?: boolean;
 }
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export const Button: React.FC<ButtonProps> = ({
   title,
@@ -32,21 +43,40 @@ export const Button: React.FC<ButtonProps> = ({
   fullWidth,
   style,
   disabled,
+  haptics = true,
+  onPress,
   ...props
 }) => {
   const isDisabled = disabled || loading;
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.8}
+    <AnimatedPressable
       disabled={isDisabled}
+      onPressIn={() => {
+        scale.value = withTiming(0.96, { duration: 90 });
+      }}
+      onPressOut={() => {
+        scale.value = withSpring(1, { damping: 14, stiffness: 260 });
+      }}
+      onPress={(e) => {
+        if (haptics && !isDisabled) {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        }
+        onPress?.(e);
+      }}
       style={[
         styles.base,
         styles[variant],
         styles[size],
         fullWidth && styles.fullWidth,
         isDisabled && styles.disabled,
-        style,
+        animatedStyle,
+        style as any,
       ]}
       {...props}
     >
@@ -70,7 +100,7 @@ export const Button: React.FC<ButtonProps> = ({
           {iconRight && <View style={styles.iconRight}>{iconRight}</View>}
         </View>
       )}
-    </TouchableOpacity>
+    </AnimatedPressable>
   );
 };
 

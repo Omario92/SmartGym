@@ -21,9 +21,10 @@ import { ExerciseImage } from '@/components/exercise/ExerciseImage';
 import { AIGeneratorModal } from '@/components/ai/AIGeneratorModal';
 import { useStore, selectCustomExercises } from '@/store';
 import type { Routine, RoutineExercise } from '@/store';
-import { EXERCISES } from '@/lib/exercises';
+
 import { routineRepository } from '@/lib/repositories/routineRepository';
 import { exerciseRepository } from '@/lib/repositories/exerciseRepository';
+import type { Exercise } from '@/types/exercise';
 import { useFocusEffect } from 'expo-router';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -215,36 +216,36 @@ const ProgramCard: React.FC<{
   onStart: () => void;
   onSave: () => void;
 }> = ({ program, saved, onStart, onSave }) => (
-  <TouchableOpacity onPress={onStart} activeOpacity={0.85} style={styles.programCard}>
+  <TouchableOpacity onPress={onStart} activeOpacity={0.85} style={styles.programCardVertical}>
     <View style={[styles.programCardBg, { borderColor: program.color + '33' }]}>
-      {/* Top */}
-      <View style={[styles.programCardTop, { backgroundColor: program.color + '15' }]}>
-        <Text style={styles.programEmoji}>{program.emoji}</Text>
-        <Badge
-          label={program.level}
-          variant={program.level === 'Beginner' ? 'accent' : program.level === 'Intermediate' ? 'info' : 'error'}
-        />
-      </View>
-
-      {/* Content */}
       <View style={styles.programCardContent}>
-        <Text variant="h4" style={{ marginBottom: 4 }}>{program.title}</Text>
-        <Text color="secondary" style={{ fontSize: FontSize.sm, marginBottom: Spacing.md }}>
+        <View style={styles.programCardHeaderRow}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+            <Text style={{ fontSize: 24 }}>{program.emoji}</Text>
+            <Text variant="h4" style={{ fontWeight: 'bold' }}>{program.title}</Text>
+          </View>
+          <Badge
+            label={program.level}
+            variant={program.level === 'Beginner' ? 'accent' : program.level === 'Intermediate' ? 'info' : 'error'}
+          />
+        </View>
+
+        <Text color="secondary" style={{ fontSize: FontSize.sm, marginBottom: Spacing.md, lineHeight: 20 }}>
           {program.description}
         </Text>
 
         <View style={styles.programStats}>
           <View style={styles.programStat}>
-            <Ionicons name="time-outline" size={13} color={Colors.textMuted} />
-            <Text color="muted" style={{ fontSize: FontSize.xs, marginLeft: 3 }}>{program.duration} min</Text>
+            <Ionicons name="time-outline" size={14} color={Colors.textMuted} />
+            <Text color="muted" style={{ fontSize: FontSize.xs, marginLeft: 4 }}>{program.duration} min</Text>
           </View>
           <View style={styles.programStat}>
-            <Ionicons name="barbell-outline" size={13} color={Colors.textMuted} />
-            <Text color="muted" style={{ fontSize: FontSize.xs, marginLeft: 3 }}>{program.exercises} exercises</Text>
+            <Ionicons name="barbell-outline" size={14} color={Colors.textMuted} />
+            <Text color="muted" style={{ fontSize: FontSize.xs, marginLeft: 4 }}>{program.exercises} exercises</Text>
           </View>
           <View style={styles.programStat}>
-            <Ionicons name="flame-outline" size={13} color={Colors.textMuted} />
-            <Text color="muted" style={{ fontSize: FontSize.xs, marginLeft: 3 }}>~{program.calories} kcal</Text>
+            <Ionicons name="flame-outline" size={14} color={Colors.textMuted} />
+            <Text color="muted" style={{ fontSize: FontSize.xs, marginLeft: 4 }}>~{program.calories} kcal</Text>
           </View>
         </View>
 
@@ -252,18 +253,9 @@ const ProgramCard: React.FC<{
           <TouchableOpacity
             style={[styles.programStartBtn, { backgroundColor: program.color, flex: 1 }]}
             onPress={onStart} activeOpacity={0.8}>
-            <Text style={{ color: '#000', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>
-              Start Workout
+            <Text style={{ color: '#000', fontWeight: FontWeight.bold, fontSize: FontSize.md }}>
+              Start
             </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.saveBtn, saved && styles.saveBtnActive]}
-            onPress={onSave} activeOpacity={0.8}>
-            <Ionicons
-              name={saved ? 'bookmark' : 'bookmark-outline'}
-              size={18}
-              color={saved ? Colors.accent : Colors.textSecondary}
-            />
           </TouchableOpacity>
         </View>
       </View>
@@ -296,7 +288,7 @@ export default function ExploreScreen() {
   const [searchVisible, setSearchVisible] = useState(false);
   const [aiModalVisible, setAiModalVisible] = useState(false);
   const [dynamicPrograms, setDynamicPrograms] = useState<Routine[]>([]);
-  const [allExercises, setAllExercises] = useState<Exercise[]>(EXERCISES);
+  const [allExercises, setAllExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(false);
 
   const loadData = async () => {
@@ -413,42 +405,42 @@ export default function ExploreScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text variant="h2">Explore</Text>
-          <Text color="secondary" style={{ marginTop: 2 }}>Discover workouts & exercises</Text>
+        <View style={{ flex: 1 }}>
+          <Text variant="h2" style={{ fontWeight: FontWeight.bold, fontSize: 28 }}>Explore</Text>
+          <Text color="secondary" style={{ marginTop: 2, fontSize: FontSize.sm }}>
+            Discover. Train. Transform.
+          </Text>
         </View>
-        <TouchableOpacity
-          style={[styles.searchBtn, styles.searchBtnGlow]}
-          onPress={() => setSearchVisible(true)}
-        >
-          <Ionicons name="search" size={20} color={Colors.accent} />
-        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* AI Smart Trainer */}
         <Card style={styles.aiCard} glowing>
           <View style={styles.aiCardInner}>
-            <View style={styles.aiLeft}>
-              <View style={styles.aiIconWrap}>
-                <Text style={{ fontSize: 28 }}>🤖</Text>
+            <View style={{ flex: 1 }}>
+              <View style={styles.aiHeader}>
+                <Text variant="h4" style={{ fontWeight: 'bold', fontSize: 20 }}>Smart Trainer AI</Text>
+                <Badge label="PRO" variant="premium" style={{ marginLeft: Spacing.sm }} />
               </View>
-              <View style={{ flex: 1 }}>
-                <View style={styles.aiHeader}>
-                  <Text variant="h4">Smart Trainer AI</Text>
-                  <Badge label="PRO" variant="premium" style={{ marginLeft: Spacing.sm }} />
-                </View>
-                <Text color="secondary" style={styles.aiSubtext}>
-                  Get a personalized workout plan generated just for you based on your goals and fitness level.
-                </Text>
-                <Button
-                  title="Generate My Plan"
-                  variant="primary"
-                  size="sm"
-                  style={{ marginTop: Spacing.md, alignSelf: 'flex-start' }}
-                  onPress={() => setAiModalVisible(true)}
-                />
+              <Text color="secondary" style={styles.aiSubtext}>
+                Get a personalized plan built around YOU.
+              </Text>
+              
+              <View style={styles.aiList}>
+                <Text color="secondary" style={styles.aiListItem}>• Your goals</Text>
+                <Text color="secondary" style={styles.aiListItem}>• Your fitness level</Text>
+                <Text color="secondary" style={styles.aiListItem}>• Your time & equipment</Text>
               </View>
+
+              <Button
+                title="Generate My Plan"
+                variant="primary"
+                style={{ marginTop: Spacing.lg, alignSelf: 'flex-start', paddingHorizontal: Spacing.xl, borderRadius: Radius.full }}
+                onPress={() => setAiModalVisible(true)}
+              />
+            </View>
+            <View style={styles.aiIconWrapLarge}>
+              <Text style={{ fontSize: 60 }}>🤖</Text>
             </View>
           </View>
         </Card>
@@ -459,15 +451,11 @@ export default function ExploreScreen() {
           onPress={() => setSearchVisible(true)}
           activeOpacity={0.8}
         >
-          <Ionicons name="search" size={16} color={Colors.textMuted} />
+          <Ionicons name="search" size={18} color={Colors.textMuted} />
           <Text color="muted" style={{ flex: 1, fontSize: FontSize.md }}>
-            Search all exercises...
+            Search exercises, programs...
           </Text>
-          <View style={styles.globalSearchBadge}>
-            <Text style={{ color: Colors.accent, fontSize: FontSize.xs, fontWeight: FontWeight.bold }}>
-              {allExercises.length + customExercises.length}
-            </Text>
-          </View>
+          <Ionicons name="options-outline" size={18} color={Colors.textMuted} />
         </TouchableOpacity>
 
         {/* My Custom Exercises section */}
@@ -552,15 +540,15 @@ export default function ExploreScreen() {
 
         {/* Featured Programs */}
         <View style={styles.sectionHeader}>
-          <Text variant="h4">Featured Programs</Text>
+          <Text variant="h4" style={{ fontWeight: 'bold' }}>Featured Programs</Text>
           <TouchableOpacity onPress={() => router.push('/workout/all-exercises')}>
-            <Text color="accent" style={{ fontSize: FontSize.sm }}>See all</Text>
+            <Text color="accent" style={{ fontSize: FontSize.sm, fontWeight: 'bold' }}>See all</Text>
           </TouchableOpacity>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
+        <View style={styles.verticalListContainer}>
           {loading && dynamicPrograms.length === 0 ? (
-            <View style={{ width: 200, height: 180, justifyContent: 'center', alignItems: 'center' }}>
+            <View style={{ height: 180, justifyContent: 'center', alignItems: 'center' }}>
               <ActivityIndicator color={Colors.accent} />
             </View>
           ) : dynamicPrograms.length > 0 ? (
@@ -569,37 +557,39 @@ export default function ExploreScreen() {
                 key={p.id} 
                 onPress={() => handleStartProgram(p)} 
                 activeOpacity={0.85} 
-                style={styles.programCard}
+                style={styles.programCardVertical}
               >
                 <View style={[styles.programCardBg, { borderColor: (p.color || Colors.accent) + '33' }]}>
-                  <View style={[styles.programCardTop, { backgroundColor: (p.color || Colors.accent) + '15' }]}>
-                    <Text style={styles.programEmoji}>💪</Text>
-                    <Badge
-                      label={p.difficulty || 'Intermediate'}
-                      variant={p.difficulty === 'beginner' ? 'accent' : p.difficulty === 'intermediate' ? 'info' : 'error'}
-                    />
-                  </View>
                   <View style={styles.programCardContent}>
-                    <Text variant="h4" style={{ marginBottom: 4 }}>{p.name}</Text>
-                    <Text color="secondary" numberOfLines={2} style={{ fontSize: FontSize.sm, marginBottom: Spacing.md }}>
+                    <View style={styles.programCardHeaderRow}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+                        <Text style={{ fontSize: 24 }}>💪</Text>
+                        <Text variant="h4" style={{ fontWeight: 'bold' }}>{p.name}</Text>
+                      </View>
+                      <Badge
+                        label={p.category || 'Intermediate'}
+                        variant={p.category === 'beginner' ? 'accent' : p.category === 'intermediate' ? 'info' : 'error'}
+                      />
+                    </View>
+                    <Text color="secondary" numberOfLines={2} style={{ fontSize: FontSize.sm, marginBottom: Spacing.md, lineHeight: 20 }}>
                       {p.description}
                     </Text>
                     <View style={styles.programStats}>
                       <View style={styles.programStat}>
-                        <Ionicons name="time-outline" size={13} color={Colors.textMuted} />
-                        <Text color="muted" style={{ fontSize: FontSize.xs, marginLeft: 3 }}>{p.estimatedDuration} min</Text>
+                        <Ionicons name="time-outline" size={14} color={Colors.textMuted} />
+                        <Text color="muted" style={{ fontSize: FontSize.xs, marginLeft: 4 }}>{p.estimatedDuration} min</Text>
                       </View>
                       <View style={styles.programStat}>
-                        <Ionicons name="barbell-outline" size={13} color={Colors.textMuted} />
-                        <Text color="muted" style={{ fontSize: FontSize.xs, marginLeft: 3 }}>{p.exercises.length} exercises</Text>
+                        <Ionicons name="barbell-outline" size={14} color={Colors.textMuted} />
+                        <Text color="muted" style={{ fontSize: FontSize.xs, marginLeft: 4 }}>{p.exercises.length} exercises</Text>
                       </View>
                     </View>
                     <View style={styles.programActions}>
                       <TouchableOpacity
                         style={[styles.programStartBtn, { backgroundColor: p.color || Colors.accent, flex: 1 }]}
                         onPress={() => handleStartProgram(p)} activeOpacity={0.8}>
-                        <Text style={{ color: '#000', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>
-                          Start Workout
+                        <Text style={{ color: '#000', fontWeight: FontWeight.bold, fontSize: FontSize.md }}>
+                          Start
                         </Text>
                       </TouchableOpacity>
                     </View>
@@ -618,7 +608,7 @@ export default function ExploreScreen() {
               />
             ))
           )}
-        </ScrollView>
+        </View>
 
         {/* Quick Workouts */}
         <View style={styles.sectionHeader}>
@@ -696,39 +686,41 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: Spacing['6xl'] },
   aiCard: { marginHorizontal: Spacing.lg, marginBottom: Spacing.xl },
-  aiCardInner: { flexDirection: 'row' },
-  aiLeft: { flexDirection: 'row', gap: Spacing.md, flex: 1 },
-  aiIconWrap: {
-    width: 52, height: 52, borderRadius: Radius.md,
-    backgroundColor: Colors.accentGlow, alignItems: 'center', justifyContent: 'center',
+  aiCardInner: { flexDirection: 'row', alignItems: 'center', padding: Spacing.md },
+  aiHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.sm },
+  aiSubtext: { fontSize: FontSize.md, lineHeight: 22, marginBottom: Spacing.sm },
+  aiList: { marginTop: Spacing.xs },
+  aiListItem: { fontSize: FontSize.sm, lineHeight: 20, marginBottom: 2 },
+  aiIconWrapLarge: {
+    marginLeft: Spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  aiHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-  aiSubtext: { fontSize: FontSize.sm, lineHeight: 18 },
   sectionHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg, marginBottom: Spacing.md,
+    paddingHorizontal: Spacing.lg, marginBottom: Spacing.md, marginTop: Spacing.md,
   },
   horizontalScroll: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.sm },
-  programCard: { width: 270, marginRight: Spacing.md },
+  verticalListContainer: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.sm },
+  programCardVertical: { width: '100%', marginBottom: Spacing.md },
   programCardBg: {
     backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
     borderWidth: 1, overflow: 'hidden', ...Shadow.card,
   },
-  programCardTop: {
+  programCardHeaderRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md,
+    marginBottom: Spacing.xs,
   },
-  programEmoji: { fontSize: 36 },
-  programCardContent: { padding: Spacing.lg },
-  programStats: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md, marginBottom: Spacing.md },
+  programCardContent: { padding: Spacing.xl },
+  programStats: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.lg, marginBottom: Spacing.lg },
   programStat: { flexDirection: 'row', alignItems: 'center' },
   programActions: { flexDirection: 'row', gap: Spacing.sm, alignItems: 'center' },
   programStartBtn: {
-    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm,
-    borderRadius: Radius.md, alignItems: 'center',
+    paddingHorizontal: Spacing.md, paddingVertical: Spacing.md,
+    borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center',
   },
   saveBtn: {
-    width: 40, height: 40, borderRadius: Radius.md,
+    width: 50, height: 50, borderRadius: Radius.md,
     backgroundColor: Colors.bgCard2, borderWidth: 1, borderColor: Colors.border,
     alignItems: 'center', justifyContent: 'center',
   },
@@ -772,7 +764,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     height: 48,
     borderWidth: 1,
-    borderColor: Colors.accentGlow,
+    borderColor: Colors.border,
     gap: Spacing.sm,
   },
   globalSearchBadge: {

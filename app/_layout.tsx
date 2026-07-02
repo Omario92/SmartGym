@@ -95,7 +95,7 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={styles.root}>
         <SafeAreaProvider>
-          <StatusBar style="light" backgroundColor={Colors.bg} />
+          <StatusBar style="light" />
           <SyncProvider>
             <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.bg } }}>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

@@ -62,6 +62,22 @@ export const Colors = {
   overlay: 'rgba(0,0,0,0.75)',
   overlayLight: 'rgba(0,0,0,0.4)',
   spotlightBorder: 'rgba(0, 255, 157, 0.6)',
+
+  // Liquid glass surfaces
+  glassBg: 'rgba(255,255,255,0.045)',
+  glassBgStrong: 'rgba(255,255,255,0.08)',
+  glassBorder: 'rgba(255,255,255,0.14)',
+  glassBorderAccent: 'rgba(0, 255, 157, 0.45)',
+  glassSheenTop: 'rgba(255,255,255,0.10)',
+  glassSheenBottom: 'rgba(255,255,255,0.0)',
+  glassHighlight: 'rgba(255,255,255,0.22)',
+} as const;
+
+export const Glass = {
+  intensityCard: 32,
+  intensityPanel: 45,
+  intensityPill: 26,
+  tint: 'dark' as const,
 } as const;
 
 export const Spacing = {

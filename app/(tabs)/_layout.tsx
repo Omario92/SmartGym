@@ -2,12 +2,34 @@
  * Bottom Tab Navigator — 5 tabs with custom dark styling and neon green active state
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { Colors, Radius, Spacing } from '@/lib/theme';
+
+export const TAB_BAR_HEIGHT = 64;
+
+function FloatingTabBarBackground() {
+  // Solid dark gradient instead of BlurView — real-time blur was causing
+  // jank on Android (multiple concurrent blurred surfaces on screen).
+  return (
+    <LinearGradient
+      colors={[Colors.bgCard3, Colors.tabBg]}
+      start={{ x: 0.5, y: 0 }}
+      end={{ x: 0.5, y: 1 }}
+      style={StyleSheet.absoluteFill}
+    />
+  );
+}
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -20,15 +42,35 @@ function TabIcon({
   focused: boolean;
   label: string;
 }) {
+  const scale = useSharedValue(focused ? 1 : 0.9);
+  const glow = useSharedValue(focused ? 1 : 0);
+
+  useEffect(() => {
+    scale.value = withSpring(focused ? 1 : 0.9, { damping: 12, stiffness: 220 });
+    glow.value = withTiming(focused ? 1 : 0, { duration: 200 });
+  }, [focused]);
+
+  const animatedWrapStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    backgroundColor: focused
+      ? Colors.accentGlow2
+      : 'transparent',
+    opacity: 0.6 + glow.value * 0.4,
+    shadowColor: Colors.accent,
+    shadowOpacity: focused ? 0.5 * glow.value : 0,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+  }));
+
   return (
     <View style={styles.tabItem}>
-      <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
+      <Animated.View style={[styles.iconWrap, animatedWrapStyle]}>
         <Ionicons
           name={name}
           size={22}
           color={focused ? Colors.tabActive : Colors.tabInactive}
         />
-      </View>
+      </Animated.View>
     </View>
   );
 }
@@ -41,20 +83,30 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: Colors.tabBg,
-          borderTopColor: Colors.border,
-          borderTopWidth: 1,
-          height: 60 + insets.bottom,
-          paddingBottom: insets.bottom,
-          paddingTop: Spacing.sm,
+          position: 'absolute',
+          left: Spacing.lg,
+          right: Spacing.lg,
+          bottom: insets.bottom + Spacing.sm,
+          height: TAB_BAR_HEIGHT,
+          borderRadius: Radius.full,
+          borderWidth: 1,
+          borderColor: Colors.glassBorder,
+          backgroundColor: 'transparent',
+          overflow: 'hidden',
+          paddingTop: 0,
+          paddingBottom: 0,
           elevation: 20,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.4,
-          shadowRadius: 12,
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.45,
+          shadowRadius: 20,
         },
+        tabBarBackground: () => <FloatingTabBarBackground />,
         tabBarActiveTintColor: Colors.tabActive,
         tabBarInactiveTintColor: Colors.tabInactive,
+        tabBarItemStyle: {
+          paddingTop: 6,
+        },
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: '600',

@@ -25,7 +25,7 @@ export async function syncAllUserData(userId: string) {
     // 2. Pull Routines
     const { data: cloudRoutines, error: rErr } = await supabase.from('routines').select('*, routine_exercises(*)').eq('user_id', userId);
     if (!rErr && cloudRoutines) {
-      const parsedRoutines = cloudRoutines.map(r => rowToRoutine(r, r.routine_exercises.map(re => rowToRoutineExercise(re))));
+      const parsedRoutines = cloudRoutines.map(r => rowToRoutine(r, r.routine_exercises.map((re: any) => rowToRoutineExercise(re))));
       store.mergeCloudRoutines(parsedRoutines);
     }
 

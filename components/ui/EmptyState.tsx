@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
+import Animated, { FadeIn, FadeInDown, ZoomIn } from 'react-native-reanimated';
 import { Colors, Spacing } from '@/lib/theme';
 import { Text } from './Text';
 import { Button } from './Button';
@@ -15,23 +16,32 @@ interface EmptyStateProps {
 }
 
 export const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, subtitle, action }) => (
-  <View style={styles.container}>
-    <Text style={styles.icon}>{icon}</Text>
-    <Text variant="h4" center style={styles.title}>
-      {title}
-    </Text>
-    <Text color="secondary" center style={styles.subtitle}>
-      {subtitle}
-    </Text>
+  <Animated.View style={styles.container} entering={FadeIn.duration(400)}>
+    <Animated.Text
+      style={styles.icon}
+      entering={ZoomIn.duration(450).springify().damping(12)}
+    >
+      {icon}
+    </Animated.Text>
+    <Animated.View entering={FadeInDown.duration(400).delay(100)}>
+      <Text variant="h4" center style={styles.title}>
+        {title}
+      </Text>
+      <Text color="secondary" center style={styles.subtitle}>
+        {subtitle}
+      </Text>
+    </Animated.View>
     {action && (
-      <Button
-        title={action.label}
-        onPress={action.onPress}
-        variant="outline"
-        style={styles.action}
-      />
+      <Animated.View entering={FadeInDown.duration(400).delay(200)}>
+        <Button
+          title={action.label}
+          onPress={action.onPress}
+          variant="outline"
+          style={styles.action}
+        />
+      </Animated.View>
     )}
-  </View>
+  </Animated.View>
 );
 
 const styles = StyleSheet.create({

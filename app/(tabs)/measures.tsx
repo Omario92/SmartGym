@@ -483,7 +483,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   logEntryDeleteBg: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     flexDirection: 'row',
     justifyContent: 'flex-end',
   },

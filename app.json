@@ -7,11 +7,6 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0A0A0F",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0A0A0F"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -52,7 +47,19 @@
             "minSdkVersion": 26
           }
         }
-      ]
+      ],
+      "expo-image",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#0A0A0F"
+        }
+      ],
+      "expo-status-bar",
+      "expo-video",
+      "expo-web-browser"
     ],
     "scheme": "smartgym",
     "experiments": {
