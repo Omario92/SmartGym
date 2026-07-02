@@ -1,9 +1,13 @@
 # SmartGym 💪
 
-A **premium, production-ready fitness tracking app** built with Expo SDK 55 + React Native 0.76.5.
+A **premium, production-ready fitness tracking app** built with Expo SDK 57 + React Native 0.86.0.
 
 ## ✨ Features
 
+- **v5.5 Database Seed & Fallback Alignment** — Automatic PostgreSQL SQL seed script for catalog exercises, and improved cache fallback logic for offline reliability.
+- **v5.4 UI & UX Refinement** — Coach AI Card styling redesign, routine list deduplication, and custom UI components like RoutineCard updates.
+- **v5.3 Upgrade Stack** — Expo SDK 57, React Native 0.86.0, and TS compilation fixes.
+- **v5.2 UI Redesign** — Redesigned Routines & Explore screen layouts with custom cards and featured lists.
 - **v5.1 Stability & Bug Fixes** — Resolved critical native Android crashes with Health Connect, fixed UI rendering bugs for soft-deleted routines, and addressed type mismatches in Explore screens.
 - **v5.0 Production Architecture** — Scalable multi-layer architecture: Domain Types → API → Cache → Repository → Service → Store.
 - **v4.0 Offline-First Cloud Sync** — Robust synchronization engine with conflict resolution, background sync, and exponential backoff retry queue.
@@ -41,7 +45,7 @@ npx expo run:android
 
 | Layer | Technology |
 |---|---|
-| **Framework** | Expo SDK 55 + expo-router v4 |
+| **Framework** | Expo SDK 57 + expo-router (SDK 57) |
 | **Backend** | Supabase (PostgreSQL, Auth, Storage, RLS) |
 | **CMS** | Google Sheets + Apps Script API |
 | **AI Service** | OpenRouter (Unified API for GPT/Claude/Gemini) |
