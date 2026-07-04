@@ -18,7 +18,7 @@ import {
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn } from 'react-native-reanimated';
-import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/lib/theme';
+import { Colors, Spacing, Radius, FontSize, FontFamily, Shadow } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { ExerciseImage } from './ExerciseImage';
 import { useStore, selectCustomExercises } from '@/store';
@@ -169,7 +169,7 @@ export const CustomExerciseManager: React.FC<CustomExerciseManagerProps> = ({
                 style={{
                   color: DIFFICULTY_COLOR[item.difficulty],
                   fontSize: FontSize.xs,
-                  fontWeight: FontWeight.semibold,
+                  fontFamily: FontFamily.bodyBold,
                   textTransform: 'capitalize',
                 }}
               >
@@ -301,7 +301,7 @@ export const CustomExerciseManager: React.FC<CustomExerciseManagerProps> = ({
               />
               {activeFilterCount > 0 && (
                 <View style={styles.filterCount}>
-                  <Text style={{ color: '#000', fontSize: 9, fontWeight: FontWeight.bold }}>
+                  <Text style={{ color: '#000', fontSize: 9, fontFamily: FontFamily.bodyBold }}>
                     {activeFilterCount}
                   </Text>
                 </View>
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
   },
   createBtnText: {
     color: '#000',
-    fontWeight: FontWeight.bold,
+    fontFamily: FontFamily.bodyBold,
     fontSize: FontSize.md,
   },
 
@@ -593,7 +593,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.accent + '44',
   },
-  cloudBadgeText: { fontSize: 9, color: Colors.accent, fontWeight: FontWeight.bold },
+  cloudBadgeText: { fontSize: 9, color: Colors.accent, fontFamily: FontFamily.bodyBold },
   cloudStatus: {
     flexDirection: 'row',
     alignItems: 'center',

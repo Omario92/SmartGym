@@ -1,13 +1,15 @@
 /**
- * Login Screen
+ * Login Screen — "Hero photo + gold glow mark" (Login.dc.html, variant 1a)
  * Supports: Email/Password, Google OAuth, Apple Sign In, Guest mode.
  */
 
 import React, { useState } from 'react';
 import {
   View,
+  Image,
   TextInput,
   TouchableOpacity,
+  Pressable,
   StyleSheet,
   ScrollView,
   Platform,
@@ -18,15 +20,20 @@ import {
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SvgXml } from 'react-native-svg';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
-import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/lib/theme';
+import { Colors, Spacing, Radius, FontSize, FontFamily } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
-import { Button } from '@/components/ui/Button';
+import { GlowOrb } from '@/components/ui/GlowOrb';
+import { GOOGLE_SVG } from '@/components/ui/designIcons';
 import { supabase } from '@/lib/supabase';
 import { useStore } from '@/store';
 
 WebBrowser.maybeCompleteAuthSession();
+
+const GOLD = '#FFD36A';
 
 export default function LoginScreen() {
   const setAuthUser = useStore((s) => s.setAuthUser);
@@ -34,6 +41,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
@@ -166,183 +174,326 @@ export default function LoginScreen() {
   // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={styles.container}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+    <View style={styles.root}>
+      {/* Hero background */}
+      <Image
+        source={require('@/assets/auth/login-background.jpg')}
+        style={styles.hero}
+        resizeMode="cover"
+      />
+      <LinearGradient
+        colors={['rgba(5,6,10,0.1)', 'rgba(5,6,10,0.88)', '#05060a']}
+        locations={[0, 0.78, 1]}
+        style={styles.heroFade}
+      />
+
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          {/* Logo */}
-          <View style={styles.logoWrap}>
-            <Text style={styles.logoIcon}>💪</Text>
-            <Text style={styles.logoTitle}>SmartGym</Text>
-            <Text style={styles.logoSubtitle}>Track. Lift. Evolve.</Text>
-          </View>
-
-          {/* Card */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Sign In</Text>
-
-            {/* Email input */}
-            <View style={styles.inputWrap}>
-              <Ionicons name="mail-outline" size={18} color={Colors.textMuted} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Email address"
-                placeholderTextColor={Colors.textMuted}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-
-            {/* Password input */}
-            <View style={styles.inputWrap}>
-              <Ionicons name="lock-closed-outline" size={18} color={Colors.textMuted} style={styles.inputIcon} />
-              <TextInput
-                style={[styles.input, { flex: 1 }]}
-                placeholder="Password"
-                placeholderTextColor={Colors.textMuted}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-              />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ padding: 4 }}>
-                <Ionicons
-                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={18}
-                  color={Colors.textMuted}
+          <ScrollView
+            contentContainerStyle={styles.container}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Logo */}
+            <View style={styles.logoWrap}>
+              <View style={styles.logoGlow}>
+                <GlowOrb
+                  size={150}
+                  color="#FFD36A"
+                  opacity={0.55}
+                  falloff={0.62}
+                  style={{ top: 0, left: 0 }}
                 />
-              </TouchableOpacity>
-            </View>
-
-            {/* Sign In button */}
-            <Button
-              title={loading ? 'Signing in…' : 'Sign In'}
-              variant="primary"
-              fullWidth
-              onPress={handleEmailLogin}
-              style={{ marginTop: Spacing.sm }}
-            />
-
-            {/* Divider */}
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or continue with</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            {/* Social buttons */}
-            <View style={styles.socialRow}>
-              <TouchableOpacity style={styles.socialBtn} onPress={handleGoogleLogin} disabled={googleLoading}>
-                {googleLoading
-                  ? <ActivityIndicator size="small" color={Colors.textPrimary} />
-                  : <>
-                      <Text style={styles.socialIcon}>G</Text>
-                      <Text style={styles.socialLabel}>Google</Text>
-                    </>
-                }
-              </TouchableOpacity>
-
-              {Platform.OS === 'ios' && (
-                <TouchableOpacity style={styles.socialBtn} onPress={handleAppleLogin}>
-                  <Ionicons name="logo-apple" size={20} color={Colors.textPrimary} />
-                  <Text style={styles.socialLabel}>Apple</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {/* Register link */}
-            <TouchableOpacity
-              style={styles.linkRow}
-              onPress={() => router.push('/auth/register')}
-            >
-              <Text style={styles.linkText}>
-                Don&apos;t have an account?{' '}
-                <Text style={{ color: Colors.accent, fontWeight: FontWeight.semibold }}>
-                  Sign Up
-                </Text>
+                <Image
+                  source={require('@/assets/auth/login-icon-2.png')}
+                  style={styles.logoIcon}
+                  resizeMode="contain"
+                />
+              </View>
+              <Text style={styles.logoTitle}>
+                Smart Gym <Text style={{ color: Colors.accent }}>Plus</Text>
               </Text>
-            </TouchableOpacity>
-          </View>
+              <View style={styles.taglineRow}>
+                <View style={styles.taglineLine} />
+                <Text style={styles.taglineText}>TRACK. LIFT. EVOLVE.</Text>
+                <View style={styles.taglineLine} />
+              </View>
+            </View>
 
-          {/* Guest mode */}
-          <TouchableOpacity style={styles.guestBtn} onPress={handleGuest}>
-            <Ionicons name="person-outline" size={16} color={Colors.textMuted} />
-            <Text style={styles.guestText}>Continue as Guest</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+            {/* Card */}
+            <View style={styles.cardShadow}>
+              <LinearGradient
+                colors={[Colors.accent, Colors.iconEnergyCyan, Colors.iconCinematicViolet]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.cardBorder}
+              >
+              <LinearGradient
+                colors={['#12362F', '#142433', '#171D34', '#241D45', '#351A55']}
+                locations={[0, 0.28, 0.55, 0.78, 1]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.cardInner}
+              >
+                <Text style={styles.cardEyebrow}>Welcome back</Text>
+                <Text style={styles.cardTitle}>Sign In</Text>
+
+                {/* Email input */}
+                <View style={styles.inputWrap}>
+                  <Ionicons name="mail-outline" size={18} color={Colors.accent} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Email address"
+                    placeholderTextColor={Colors.textMuted}
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
+
+                {/* Password input */}
+                <View style={styles.inputWrap}>
+                  <Ionicons name="lock-closed-outline" size={18} color={Colors.accent} style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.input, { flex: 1 }]}
+                    placeholder="Password"
+                    placeholderTextColor={Colors.textMuted}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ padding: 4 }}>
+                    <Ionicons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={18}
+                      color={Colors.textMuted}
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Remember me / Forgot password */}
+                <View style={styles.optionsRow}>
+                  <TouchableOpacity style={styles.rememberRow} onPress={() => setRememberMe(!rememberMe)}>
+                    <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                      {rememberMe && <Ionicons name="checkmark" size={12} color="#000" />}
+                    </View>
+                    <Text style={styles.rememberText}>Remember me</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => router.push('/auth/forgot-password')}>
+                    <Text style={styles.forgotText}>Forgot password?</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Sign In button */}
+                <Pressable style={styles.ctaBtn} onPress={handleEmailLogin} disabled={loading}>
+                  <LinearGradient
+                    colors={[Colors.accent, Colors.iconEnergyCyan]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  {loading ? (
+                    <ActivityIndicator size="small" color="#06070D" />
+                  ) : (
+                    <>
+                      <Text style={styles.ctaText}>Sign In</Text>
+                      <Ionicons name="arrow-forward" size={16} color="#06070D" />
+                    </>
+                  )}
+                </Pressable>
+
+                {/* Divider */}
+                <View style={styles.divider}>
+                  <LinearGradient
+                    colors={['transparent', GOLD, 'transparent']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.dividerLine}
+                  />
+                  <Text style={styles.dividerText}>OR CONTINUE WITH</Text>
+                  <LinearGradient
+                    colors={['transparent', GOLD, 'transparent']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.dividerLine}
+                  />
+                </View>
+
+                {/* Social buttons */}
+                <View style={styles.socialRow}>
+                  <TouchableOpacity style={styles.socialBtn} onPress={handleGoogleLogin} disabled={googleLoading}>
+                    {googleLoading ? (
+                      <ActivityIndicator size="small" color={Colors.textPrimary} />
+                    ) : (
+                      <>
+                        <SvgXml xml={GOOGLE_SVG} width={16} height={16} />
+                        <Text style={styles.socialLabel}>Google</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+
+                  {Platform.OS === 'ios' && (
+                    <TouchableOpacity style={[styles.socialBtn, styles.socialBtnApple]} onPress={handleAppleLogin}>
+                      <Ionicons name="logo-apple" size={18} color={Colors.textPrimary} />
+                      <Text style={styles.socialLabel}>Apple</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {/* Register link */}
+                <TouchableOpacity
+                  style={styles.linkRow}
+                  onPress={() => router.push('/auth/register')}
+                >
+                  <Text style={styles.linkText}>
+                    Don&apos;t have an account?{' '}
+                    <Text style={{ color: Colors.accent, fontFamily: FontFamily.bodyBold }}>
+                      Sign Up
+                    </Text>
+                  </Text>
+                </TouchableOpacity>
+              </LinearGradient>
+              </LinearGradient>
+            </View>
+
+            {/* Guest mode */}
+            <TouchableOpacity style={styles.guestBtn} onPress={handleGuest}>
+              <Ionicons name="person-outline" size={16} color={Colors.accent} />
+              <Text style={styles.guestText}>Continue as Guest</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.bg },
-  container: { flexGrow: 1, padding: Spacing.xl, justifyContent: 'center' },
+const HERO_HEIGHT = 420;
 
-  logoWrap: { alignItems: 'center', marginBottom: Spacing.xl * 1.5 },
-  logoIcon: { fontSize: 56, marginBottom: Spacing.sm },
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#05060a' },
+  hero: { position: 'absolute', top: 0, left: 0, right: 0, height: HERO_HEIGHT },
+  heroFade: { position: 'absolute', top: 0, left: 0, right: 0, height: HERO_HEIGHT },
+  safe: { flex: 1 },
+  container: { flexGrow: 1, padding: Spacing.xl, paddingTop: Spacing.xxl, justifyContent: 'center' },
+
+  logoWrap: { alignItems: 'center', marginBottom: Spacing.md },
+  logoGlow: {
+    width: 150,
+    height: 150,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  logoIcon: {
+    width: 110,
+    height: 110,
+    shadowColor: GOLD,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 10,
+  },
   logoTitle: {
-    fontSize: 32,
-    fontWeight: FontWeight.bold,
+    fontFamily: FontFamily.display,
+    fontSize: 28,
     color: Colors.textPrimary,
     letterSpacing: -0.5,
+    marginTop: 10,
   },
-  logoSubtitle: {
-    fontSize: FontSize.sm,
-    color: Colors.textMuted,
-    marginTop: 4,
-    letterSpacing: 1.5,
+  taglineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginTop: Spacing.sm,
+    marginHorizontal: Spacing.xxl,
   },
+  taglineLine: { width: 24, height: 1, backgroundColor: GOLD },
+  taglineText: { fontSize: FontSize.xs, letterSpacing: 2, color: '#e8e8f0' },
 
-  card: {
-    backgroundColor: Colors.bgCard,
+  cardShadow: {
     borderRadius: Radius.xl,
-    padding: Spacing.xl,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    marginTop: Spacing.xl,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.5,
+    shadowRadius: 40,
+    elevation: 10,
   },
+  cardBorder: {
+    borderRadius: Radius.xl,
+    padding: 1,
+    overflow: 'hidden',
+  },
+  cardInner: {
+    borderRadius: Radius.xl - 1,
+    padding: Spacing.xl,
+    overflow: 'hidden',
+    backgroundColor: '#141824',
+  },
+  cardEyebrow: { color: Colors.accent, fontFamily: FontFamily.bodyBold, fontSize: FontSize.xs },
   cardTitle: {
-    fontSize: FontSize.xl,
-    fontWeight: FontWeight.bold,
+    fontFamily: FontFamily.display,
+    fontSize: FontSize['2xl'],
     color: Colors.textPrimary,
+    marginTop: 2,
     marginBottom: Spacing.lg,
   },
 
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.bgInput,
+    backgroundColor: 'rgba(10,10,15,0.6)',
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: 'rgba(0,255,157,0.35)',
     paddingHorizontal: Spacing.md,
     height: 50,
     marginBottom: Spacing.md,
   },
   inputIcon: { marginRight: Spacing.sm },
-  input: {
-    flex: 1,
-    color: Colors.textPrimary,
-    fontSize: FontSize.md,
-  },
+  input: { flex: 1, color: Colors.textPrimary, fontSize: FontSize.md },
 
-  divider: {
+  optionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: Spacing.lg,
-    gap: Spacing.sm,
+    justifyContent: 'space-between',
+    marginBottom: 4,
   },
-  dividerLine: { flex: 1, height: 1, backgroundColor: Colors.border },
-  dividerText: { fontSize: FontSize.xs, color: Colors.textMuted, paddingHorizontal: 4 },
+  rememberRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  checkbox: {
+    width: 16,
+    height: 16,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: Colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxChecked: { backgroundColor: Colors.accent },
+  rememberText: { fontSize: FontSize.sm, color: Colors.textSecondary },
+  forgotText: { fontSize: FontSize.sm, color: Colors.accent, fontFamily: FontFamily.bodyBold },
+
+  ctaBtn: {
+    marginTop: Spacing.md,
+    height: 50,
+    borderRadius: Radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    overflow: 'hidden',
+  },
+  ctaText: { fontFamily: FontFamily.bodyBold, fontSize: FontSize.lg, color: '#06070D' },
+
+  divider: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginVertical: Spacing.lg },
+  dividerLine: { flex: 1, height: 1 },
+  dividerText: { fontSize: FontSize.xs, letterSpacing: 1, color: Colors.textMuted },
 
   socialRow: { flexDirection: 'row', gap: Spacing.md },
   socialBtn: {
@@ -350,18 +501,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.xs,
-    backgroundColor: Colors.bgCard2,
+    gap: 6,
+    backgroundColor: 'rgba(0,0,0,0.3)',
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: 'rgba(0,255,157,0.3)',
     paddingVertical: 12,
   },
-  socialIcon: {
-    fontSize: 16,
-    fontWeight: FontWeight.bold,
-    color: Colors.textPrimary,
-  },
+  socialBtnApple: { borderColor: 'rgba(139,92,255,0.4)' },
   socialLabel: { fontSize: FontSize.sm, color: Colors.textPrimary },
 
   linkRow: { alignItems: 'center', marginTop: Spacing.lg },
@@ -372,8 +519,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.xs,
-    marginTop: Spacing.xl,
+    marginTop: Spacing.lg,
     padding: Spacing.md,
   },
-  guestText: { fontSize: FontSize.sm, color: Colors.textMuted },
+  guestText: { fontSize: FontSize.sm, color: Colors.accent },
 });

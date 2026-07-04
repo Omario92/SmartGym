@@ -13,7 +13,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { Colors, Radius, Spacing, FontSize, FontWeight, Shadow } from '@/lib/theme';
+import { Colors, Radius, Spacing, FontSize, FontFamily, Shadow } from '@/lib/theme';
 import { Text } from './Text';
 
 type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'premium';
@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
   lg: { paddingHorizontal: Spacing.xxl, paddingVertical: Spacing.lg, minHeight: 52 },
 
   // Text base
-  text: { fontWeight: FontWeight.semibold },
+  text: { fontFamily: FontFamily.bodyBold },
   text_primary: { color: '#000' },
   text_secondary: { color: Colors.textPrimary },
   text_outline: { color: Colors.accent },

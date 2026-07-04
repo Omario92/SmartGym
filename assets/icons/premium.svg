@@ -1,0 +1,23 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">
+
+
+<defs>
+  <linearGradient id="crown" x1="4" y1="5" x2="20" y2="20" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#FFF7C2"></stop>
+    <stop offset=".36" stop-color="#FFD36A"></stop>
+    <stop offset=".72" stop-color="#FF9A3D"></stop>
+    <stop offset="1" stop-color="#8B5CFF"></stop>
+  </linearGradient>
+  <linearGradient id="gem" x1="9" y1="9" x2="15" y2="16" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#C9FFFF"></stop>
+    <stop offset="1" stop-color="#00F5A0"></stop>
+  </linearGradient>
+  <filter id="crownGlow" x="-35%" y="-35%" width="170%" height="170%"><feGaussianBlur stdDeviation="1.1" result="b"></feGaussianBlur><feBlend in="SourceGraphic" in2="b"></feBlend></filter>
+</defs>
+<path d="M4.75 8.05 8.65 11.7 12 5.35l3.35 6.35 3.9-3.65-1.25 9.15H6L4.75 8.05Z" fill="url(#crown)" filter="url(#crownGlow)"></path>
+<path class="s" d="M4.75 8.05 8.65 11.7 12 5.35l3.35 6.35 3.9-3.65-1.25 9.15H6L4.75 8.05Z" stroke="#FFF2B2" stroke-width=".85"></path>
+<path d="M10.25 12.2 12 10.45l1.75 1.75L12 14.05l-1.75-1.85Z" fill="url(#gem)"></path>
+<path class="s" d="M7.1 19.25h9.8" stroke="url(#crown)" stroke-width="1.6"></path>
+<path d="M7.6 9.2c.48.7.94 1.08 1.45 1.45" stroke="white" stroke-opacity=".55" stroke-width=".85" stroke-linecap="round"></path>
+
+</svg>

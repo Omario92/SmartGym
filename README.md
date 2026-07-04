@@ -4,6 +4,7 @@ A **premium, production-ready fitness tracking app** built with Expo SDK 57 + Re
 
 ## ✨ Features
 
+- **v5.6 Auth Flow & Premium UI Enhancements** — Forgot Password screen with Supabase reset email integration, nested gradient borders, custom Google/Apple SVG buttons, gold branding accents (#FFD36A), Space Grotesk display typography, and GlowOrb neon glow backdrops on all main tabs.
 - **v5.5 Database Seed & Fallback Alignment** — Automatic PostgreSQL SQL seed script for catalog exercises, and improved cache fallback logic for offline reliability.
 - **v5.4 UI & UX Refinement** — Coach AI Card styling redesign, routine list deduplication, and custom UI components like RoutineCard updates.
 - **v5.3 Upgrade Stack** — Expo SDK 57, React Native 0.86.0, and TS compilation fixes.

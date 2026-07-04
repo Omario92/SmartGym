@@ -5,17 +5,22 @@
 
 import React, { useState, useRef } from 'react';
 import {
-  View, ScrollView, StyleSheet, TouchableOpacity,
+  View, Image, ScrollView, StyleSheet, TouchableOpacity, Pressable,
   Dimensions, Alert, Animated, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/lib/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SvgXml } from 'react-native-svg';
+import { Colors, Spacing, Radius, FontSize, FontFamily, Shadow } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { GlowOrb } from '@/components/ui/GlowOrb';
+import { AI_COACH_SVG } from '@/components/ui/designIcons';
+import { muscleIcons } from '@/lib/muscleIcons';
 import { GlobalExerciseSearch } from '@/components/exercise/GlobalExerciseSearch';
 import { ExerciseImage } from '@/components/exercise/ExerciseImage';
 import { AIGeneratorModal } from '@/components/ai/AIGeneratorModal';
@@ -44,7 +49,7 @@ const useToast = () => {
   };
   const ToastComponent = () => (
     <Animated.View style={[styles.toast, { opacity }]} pointerEvents="none">
-      <Text style={{ color: '#000', fontWeight: FontWeight.semibold, fontSize: FontSize.sm }}>{message}</Text>
+      <Text style={{ color: '#000', fontFamily: FontFamily.bodyBold, fontSize: FontSize.sm }}>{message}</Text>
     </Animated.View>
   );
   return { show, ToastComponent };
@@ -253,7 +258,7 @@ const ProgramCard: React.FC<{
           <TouchableOpacity
             style={[styles.programStartBtn, { backgroundColor: program.color, flex: 1 }]}
             onPress={onStart} activeOpacity={0.8}>
-            <Text style={{ color: '#000', fontWeight: FontWeight.bold, fontSize: FontSize.md }}>
+            <Text style={{ color: '#000', fontFamily: FontFamily.bodyBold, fontSize: FontSize.md }}>
               Start
             </Text>
           </TouchableOpacity>
@@ -266,15 +271,23 @@ const ProgramCard: React.FC<{
 const CategoryChip: React.FC<{
   cat: typeof EXERCISE_CATEGORIES[0];
   onPress: () => void;
-}> = ({ cat, onPress }) => (
-  <TouchableOpacity onPress={onPress} style={styles.categoryChip} activeOpacity={0.8}>
-    <View style={[styles.categoryIcon, { backgroundColor: cat.color + '20' }]}>
-      <Text style={{ fontSize: 20 }}>{cat.icon}</Text>
-    </View>
-    <Text style={{ fontSize: FontSize.sm, fontWeight: FontWeight.semibold }}>{cat.label}</Text>
-    <Text color="muted" style={{ fontSize: FontSize.xs }}>{cat.count} exercises</Text>
-  </TouchableOpacity>
-);
+}> = ({ cat, onPress }) => {
+  const muscleImg = (muscleIcons as Record<string, any>)[cat.id];
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.85}
+      style={[styles.muscleCard, { borderColor: cat.color, shadowColor: cat.color }]}
+    >
+      {muscleImg ? (
+        <Image source={muscleImg} style={styles.muscleCardImg} resizeMode="contain" />
+      ) : (
+        <Text style={styles.muscleCardEmoji}>{cat.icon}</Text>
+      )}
+      <Text style={styles.muscleCardLabel}>{cat.label}</Text>
+    </TouchableOpacity>
+  );
+};
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
@@ -406,7 +419,7 @@ export default function ExploreScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
-          <Text variant="h2" style={{ fontWeight: FontWeight.bold, fontSize: 28 }}>Explore</Text>
+          <Text variant="h2" style={{ fontSize: 28 }}>Explore</Text>
           <Text color="secondary" style={{ marginTop: 2, fontSize: FontSize.sm }}>
             Discover. Train. Transform.
           </Text>
@@ -415,7 +428,14 @@ export default function ExploreScreen() {
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* AI Smart Trainer */}
-        <Card style={styles.aiCard} glowing>
+        <View style={styles.aiCard}>
+          <LinearGradient
+            colors={['#241238', '#0C2432']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <GlowOrb size={150} color="rgba(0,209,255,0.25)" style={{ top: -50, right: -40 }} />
           <View style={styles.aiCardInner}>
             <View style={{ flex: 1 }}>
               <View style={styles.aiHeader}>
@@ -425,25 +445,28 @@ export default function ExploreScreen() {
               <Text color="secondary" style={styles.aiSubtext}>
                 Get a personalized plan built around YOU.
               </Text>
-              
+
               <View style={styles.aiList}>
                 <Text color="secondary" style={styles.aiListItem}>• Your goals</Text>
                 <Text color="secondary" style={styles.aiListItem}>• Your fitness level</Text>
                 <Text color="secondary" style={styles.aiListItem}>• Your time & equipment</Text>
               </View>
 
-              <Button
-                title="Generate My Plan"
-                variant="primary"
-                style={{ marginTop: Spacing.lg, alignSelf: 'flex-start', paddingHorizontal: Spacing.xl, borderRadius: Radius.full }}
-                onPress={() => setAiModalVisible(true)}
-              />
+              <Pressable style={styles.aiGenerateBtn} onPress={() => setAiModalVisible(true)}>
+                <LinearGradient
+                  colors={[Colors.iconCinematicViolet, Colors.iconEnergyCyan]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={StyleSheet.absoluteFill}
+                />
+                <Text style={styles.aiGenerateBtnText}>Generate My Plan</Text>
+              </Pressable>
             </View>
             <View style={styles.aiIconWrapLarge}>
-              <Text style={{ fontSize: 60 }}>🤖</Text>
+              <SvgXml xml={AI_COACH_SVG} width={56} height={56} />
             </View>
           </View>
-        </Card>
+        </View>
 
         {/* Global Exercise Search Bar */}
         <TouchableOpacity
@@ -451,11 +474,11 @@ export default function ExploreScreen() {
           onPress={() => setSearchVisible(true)}
           activeOpacity={0.8}
         >
-          <Ionicons name="search" size={18} color={Colors.textMuted} />
-          <Text color="muted" style={{ flex: 1, fontSize: FontSize.md }}>
+          <Ionicons name="search" size={18} color={Colors.iconInactive} />
+          <Text style={{ flex: 1, fontSize: FontSize.md, color: Colors.iconInactive }}>
             Search exercises, programs...
           </Text>
-          <Ionicons name="options-outline" size={18} color={Colors.textMuted} />
+          <Ionicons name="options-outline" size={18} color={Colors.iconInactive} />
         </TouchableOpacity>
 
         {/* My Custom Exercises section */}
@@ -488,7 +511,7 @@ export default function ExploreScreen() {
                       {ex.muscleGroup.replace(/_/g, ' ')}
                     </Text>
                     <View style={styles.customExBadge}>
-                      <Text style={{ color: Colors.accent, fontSize: 10, fontWeight: FontWeight.bold }}>✨ Custom</Text>
+                      <Text style={{ color: Colors.accent, fontSize: 10, fontFamily: FontFamily.bodyBold }}>✨ Custom</Text>
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -498,7 +521,7 @@ export default function ExploreScreen() {
                   style={styles.customExMore}
                   onPress={() => setSearchVisible(true)}
                 >
-                  <Text color="accent" style={{ fontWeight: FontWeight.bold }}>
+                  <Text color="accent" style={{ fontFamily: FontFamily.bodyBold }}>
                     +{customExercises.length - 8} more
                   </Text>
                 </TouchableOpacity>
@@ -588,7 +611,7 @@ export default function ExploreScreen() {
                       <TouchableOpacity
                         style={[styles.programStartBtn, { backgroundColor: p.color || Colors.accent, flex: 1 }]}
                         onPress={() => handleStartProgram(p)} activeOpacity={0.8}>
-                        <Text style={{ color: '#000', fontWeight: FontWeight.bold, fontSize: FontSize.md }}>
+                        <Text style={{ color: '#000', fontFamily: FontFamily.bodyBold, fontSize: FontSize.md }}>
                           Start
                         </Text>
                       </TouchableOpacity>
@@ -685,12 +708,37 @@ const styles = StyleSheet.create({
   },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: Spacing['6xl'] },
-  aiCard: { marginHorizontal: Spacing.lg, marginBottom: Spacing.xl },
-  aiCardInner: { flexDirection: 'row', alignItems: 'center', padding: Spacing.md },
+  aiCard: {
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.xl,
+    borderRadius: Radius.xl,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(139,92,255,0.4)',
+    shadowColor: Colors.iconCinematicViolet,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.22,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  aiCardInner: { flexDirection: 'row', alignItems: 'center', padding: Spacing.xl },
   aiHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.sm },
-  aiSubtext: { fontSize: FontSize.md, lineHeight: 22, marginBottom: Spacing.sm },
+  aiSubtext: { fontSize: FontSize.md, lineHeight: 22, marginBottom: Spacing.sm, color: '#C8C8E0' },
   aiList: { marginTop: Spacing.xs },
-  aiListItem: { fontSize: FontSize.sm, lineHeight: 20, marginBottom: 2 },
+  aiListItem: { fontSize: FontSize.sm, lineHeight: 20, marginBottom: 2, color: '#C8C8E0' },
+  aiGenerateBtn: {
+    marginTop: Spacing.lg,
+    alignSelf: 'flex-start',
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md - 2,
+    borderRadius: Radius.full,
+    overflow: 'hidden',
+  },
+  aiGenerateBtnText: {
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.bodyBold,
+    color: Colors.textPrimary,
+  },
   aiIconWrapLarge: {
     marginLeft: Spacing.md,
     alignItems: 'center',
@@ -738,17 +786,30 @@ const styles = StyleSheet.create({
   },
   categoriesGrid: {
     flexDirection: 'row', flexWrap: 'wrap',
-    paddingHorizontal: Spacing.lg, gap: Spacing.md, marginBottom: Spacing.xl,
+    paddingHorizontal: Spacing.lg, gap: Spacing.sm + 2, marginBottom: Spacing.xl,
   },
-  categoryChip: {
-    flex: 1, minWidth: (SCREEN_W - Spacing.lg * 2 - Spacing.md) / 2,
-    backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
-    padding: Spacing.md, borderWidth: 1, borderColor: Colors.border,
-    alignItems: 'center', gap: Spacing.xs,
+  muscleCard: {
+    width: (SCREEN_W - Spacing.lg * 2 - (Spacing.sm + 2) * 2) / 3,
+    height: 150,
+    borderRadius: Radius.md + 2,
+    backgroundColor: Colors.bg,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xs,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 6,
   },
-  categoryIcon: {
-    width: 48, height: 48, borderRadius: Radius.md,
-    alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.xs,
+  muscleCardImg: { width: 69, height: 69, flex: 1 },
+  muscleCardEmoji: { fontSize: 40, flex: 1, textAlignVertical: 'center' },
+  muscleCardLabel: {
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.bodyBold,
+    color: Colors.textPrimary,
   },
   searchBtnGlow: {
     borderColor: Colors.accentGlow,
@@ -757,14 +818,14 @@ const styles = StyleSheet.create({
   globalSearchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.bgCard,
+    backgroundColor: Colors.iconPanel,
     borderRadius: Radius.md,
     marginHorizontal: Spacing.lg,
     marginBottom: Spacing.lg,
     paddingHorizontal: Spacing.md,
     height: 48,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: 'rgba(150,151,190,0.2)',
     gap: Spacing.sm,
   },
   globalSearchBadge: {

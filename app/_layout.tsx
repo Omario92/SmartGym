@@ -12,7 +12,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Colors } from '@/lib/theme';
+import { useFonts as useExpoFonts } from 'expo-font';
+import { Colors, FontFamily } from '@/lib/theme';
 import { useStore } from '@/store';
 import { GuidedTour } from '@/components/tour/GuidedTour';
 import { supabase } from '@/lib/supabase';
@@ -34,6 +35,16 @@ export default function RootLayout() {
   const clearAuthUser = useStore(s => s.clearAuthUser);
 
   const [hydrated, setHydrated] = useState(false);
+  const [fontsLoaded] = useExpoFonts({
+    SpaceGrotesk_400Regular: require('@/assets/fonts/space-grotesk/SpaceGrotesk-Regular.otf'),
+    SpaceGrotesk_500Medium: require('@/assets/fonts/space-grotesk/SpaceGrotesk-Medium.otf'),
+    SpaceGrotesk_700Bold: require('@/assets/fonts/space-grotesk/SpaceGrotesk-Bold.otf'),
+    'Satoshi-Light': require('@/assets/fonts/satoshi/Satoshi-Light.otf'),
+    'Satoshi-Regular': require('@/assets/fonts/satoshi/Satoshi-Regular.otf'),
+    'Satoshi-Medium': require('@/assets/fonts/satoshi/Satoshi-Medium.otf'),
+    'Satoshi-Bold': require('@/assets/fonts/satoshi/Satoshi-Bold.otf'),
+    'Satoshi-Black': require('@/assets/fonts/satoshi/Satoshi-Black.otf'),
+  });
 
   // ── Zustand hydration ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -83,7 +94,7 @@ export default function RootLayout() {
     }
   };
 
-  if (!hydrated) {
+  if (!hydrated || !fontsLoaded) {
     return (
       <View style={styles.loadingScreen}>
         <ActivityIndicator size="large" color={Colors.accent} />
@@ -119,7 +130,7 @@ export default function RootLayout() {
                 headerTitle: 'New Routine',
                 headerStyle: { backgroundColor: Colors.bgCard },
                 headerTintColor: Colors.textPrimary,
-                headerTitleStyle: { color: Colors.textPrimary, fontWeight: '600' },
+                headerTitleStyle: { color: Colors.textPrimary, fontFamily: FontFamily.display },
                 presentation: 'modal',
               }}
             />
@@ -130,7 +141,7 @@ export default function RootLayout() {
                 headerTitle: 'Routine',
                 headerStyle: { backgroundColor: Colors.bgCard },
                 headerTintColor: Colors.textPrimary,
-                headerTitleStyle: { color: Colors.textPrimary, fontWeight: '600' },
+                headerTitleStyle: { color: Colors.textPrimary, fontFamily: FontFamily.display },
               }}
             />
             <Stack.Screen
@@ -144,7 +155,7 @@ export default function RootLayout() {
                 headerTitle: 'Custom Exercise',
                 headerStyle: { backgroundColor: Colors.bgCard },
                 headerTintColor: Colors.textPrimary,
-                headerTitleStyle: { color: Colors.textPrimary, fontWeight: '600' },
+                headerTitleStyle: { color: Colors.textPrimary, fontFamily: FontFamily.display },
                 presentation: 'modal',
               }}
             />
@@ -155,7 +166,7 @@ export default function RootLayout() {
                 headerTitle: 'All Exercises',
                 headerStyle: { backgroundColor: Colors.bg },
                 headerTintColor: Colors.textPrimary,
-                headerTitleStyle: { color: Colors.textPrimary, fontWeight: '600' },
+                headerTitleStyle: { color: Colors.textPrimary, fontFamily: FontFamily.display },
                 presentation: 'modal',
               }}
             />

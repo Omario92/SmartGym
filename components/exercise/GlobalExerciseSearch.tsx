@@ -17,7 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn } from 'react-native-reanimated';
-import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/lib/theme';
+import { Colors, Spacing, Radius, FontSize, Shadow } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { ExerciseCard } from './ExerciseCard';
 import { ExerciseDetailModal } from './ExerciseDetailModal';

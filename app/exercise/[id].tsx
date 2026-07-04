@@ -20,7 +20,7 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/lib/theme';
+import { Colors, Spacing, Radius, FontSize, FontFamily } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -346,7 +346,7 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontSize: FontSize.lg,
-    fontWeight: FontWeight.bold,
+    fontFamily: FontFamily.display,
     color: Colors.textPrimary,
   },
   headerActions: { flexDirection: 'row', width: 80, justifyContent: 'flex-end' },
@@ -414,7 +414,7 @@ const styles = StyleSheet.create({
   },
   stepNum: {
     fontSize: FontSize.xs,
-    fontWeight: FontWeight.bold,
+    fontFamily: FontFamily.bodyBold,
     color: Colors.accent,
   },
   stepText: {

@@ -18,7 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/lib/theme';
+import { Colors, Spacing, Radius, FontSize, FontFamily, Shadow } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -92,7 +92,7 @@ const ExercisePickerModal: React.FC<{
                 <Text
                   style={{
                     fontSize: FontSize.sm,
-                    fontWeight: tab === id ? FontWeight.bold : FontWeight.regular,
+                    fontFamily: tab === id ? FontFamily.bodyBold : FontFamily.body,
                     color: tab === id ? Colors.accent : Colors.textSecondary,
                   }}
                 >
@@ -165,7 +165,7 @@ const ExercisePickerModal: React.FC<{
               onPress={handleNavigateCreate}
             >
               <Ionicons name="add" size={18} color="#000" />
-              <Text style={{ color: '#000', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>
+              <Text style={{ color: '#000', fontFamily: FontFamily.bodyBold, fontSize: FontSize.sm }}>
                 Create Custom Exercise
               </Text>
             </TouchableOpacity>
@@ -239,7 +239,7 @@ const ExerciseRow: React.FC<{
         <ExerciseImage uri={exerciseImage} width={44} height={34} borderRadius={Radius.xs} />
       )}
       <View style={styles.exerciseRowNum}>
-        <Text color="accent" style={{ fontWeight: FontWeight.bold }}>
+        <Text color="accent" style={{ fontFamily: FontFamily.bodyBold }}>
           {index + 1}
         </Text>
       </View>
@@ -534,7 +534,7 @@ const styles = StyleSheet.create({
   },
   addExerciseBtnText: {
     color: '#000',
-    fontWeight: FontWeight.semibold,
+    fontFamily: FontFamily.bodyBold,
     fontSize: FontSize.sm,
   },
   emptyExercises: {
@@ -691,6 +691,6 @@ const styles = StyleSheet.create({
   customBadgeText: {
     color: Colors.accent,
     fontSize: FontSize.xs,
-    fontWeight: FontWeight.semibold,
+    fontFamily: FontFamily.bodyBold,
   },
 });

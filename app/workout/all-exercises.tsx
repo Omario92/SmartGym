@@ -18,7 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/lib/theme';
+import { Colors, Spacing, Radius, FontSize, FontFamily } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { Badge } from '@/components/ui/Badge';
 import { ExerciseImage } from '@/components/exercise/ExerciseImage';
@@ -267,7 +267,7 @@ export default function AllExercisesScreen() {
               style={styles.applyBtn}
               onPress={() => setShowFilters(false)}
             >
-              <Text style={{ color: '#000', fontWeight: FontWeight.bold }}>
+              <Text style={{ color: '#000', fontFamily: FontFamily.bodyBold }}>
                 Show {filtered.length} results
               </Text>
             </TouchableOpacity>
@@ -354,11 +354,11 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: FontSize.xs,
     color: Colors.textSecondary,
-    fontWeight: FontWeight.medium,
+    fontFamily: FontFamily.bodyMedium,
   },
   chipTextActive: {
     color: '#000',
-    fontWeight: FontWeight.bold,
+    fontFamily: FontFamily.bodyBold,
   },
 
   resultsRow: {
@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
   filterSectionLabel: {
     fontSize: FontSize.xs,
     letterSpacing: 1.2,
-    fontWeight: FontWeight.semibold,
+    fontFamily: FontFamily.bodyBold,
     marginBottom: Spacing.md,
     marginTop: Spacing.lg,
   },

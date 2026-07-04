@@ -1,6 +1,5 @@
 /**
- * Register Screen — "Sign Up" (Login.dc.html, variant 1c)
- * Email/Password signup with full name, terms consent, social buttons.
+ * Forgot Password Screen (Login.dc.html, variant 1b)
  */
 
 import React, { useState } from 'react';
@@ -21,64 +20,34 @@ import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SvgXml } from 'react-native-svg';
 import { Colors, Spacing, Radius, FontSize, FontFamily } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { GlowOrb } from '@/components/ui/GlowOrb';
-import { GOOGLE_SVG } from '@/components/ui/designIcons';
 import { supabase } from '@/lib/supabase';
 
 const GOLD = '#FFD36A';
 
-export default function RegisterScreen() {
-  const [fullName, setFullName] = useState('');
+export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [agreeTerms, setAgreeTerms] = useState(true);
   const [loading, setLoading] = useState(false);
 
-  const handleRegister = async () => {
-    if (!fullName.trim() || !email.trim() || !password || !confirmPassword) {
-      Alert.alert('Missing Fields', 'Please fill in all fields.');
+  const handleSendReset = async () => {
+    if (!email.trim()) {
+      Alert.alert('Missing Email', 'Please enter the email linked to your account.');
       return;
     }
-    if (password.length < 8) {
-      Alert.alert('Weak Password', 'Password must be at least 8 characters.');
-      return;
-    }
-    if (password !== confirmPassword) {
-      Alert.alert('Password Mismatch', 'Passwords do not match.');
-      return;
-    }
-    if (!agreeTerms) {
-      Alert.alert('Terms Required', 'Please agree to the Terms of Service and Privacy Policy.');
-      return;
-    }
-
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: { data: { full_name: fullName.trim() } },
-      });
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
       if (error) throw error;
-      if (data.user && !data.session) {
-        // Email confirmation required
-        Alert.alert(
-          'Verify Your Email',
-          'We sent a confirmation link to your email. Please verify to continue.',
-          [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
-        );
-      } else if (data.session) {
-        // Auto-confirmed (rare)
-        router.replace('/');
-      }
+      Alert.alert(
+        'Check Your Email',
+        'We sent a password reset link to your email address.',
+        [{ text: 'OK', onPress: () => router.back() }]
+      );
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Registration failed.';
-      Alert.alert('Registration Failed', message);
+      const message = err instanceof Error ? err.message : 'Could not send reset link.';
+      Alert.alert('Reset Failed', message);
     } finally {
       setLoading(false);
     }
@@ -99,6 +68,7 @@ export default function RegisterScreen() {
       />
 
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        {/* Back button */}
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={18} color={Colors.accent} />
         </TouchableOpacity>
@@ -153,23 +123,12 @@ export default function RegisterScreen() {
                 end={{ x: 1, y: 1 }}
                 style={styles.cardInner}
               >
-                <Text style={styles.cardEyebrow}>Get started</Text>
-                <Text style={styles.cardTitle}>Sign Up</Text>
+                <Text style={styles.cardEyebrow}>Reset your password</Text>
+                <Text style={styles.cardTitle}>Forgot Password?</Text>
+                <Text style={styles.cardDesc}>
+                  No worries — enter the email linked to your account and we&apos;ll send a reset link.
+                </Text>
 
-                {/* Full name */}
-                <View style={styles.inputWrap}>
-                  <Ionicons name="person-outline" size={18} color={Colors.accent} style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Full name"
-                    placeholderTextColor={Colors.textMuted}
-                    value={fullName}
-                    onChangeText={setFullName}
-                    autoCapitalize="words"
-                  />
-                </View>
-
-                {/* Email */}
                 <View style={styles.inputWrap}>
                   <Ionicons name="mail-outline" size={18} color={Colors.accent} style={styles.inputIcon} />
                   <TextInput
@@ -184,54 +143,7 @@ export default function RegisterScreen() {
                   />
                 </View>
 
-                {/* Password */}
-                <View style={styles.inputWrap}>
-                  <Ionicons name="lock-closed-outline" size={18} color={Colors.accent} style={styles.inputIcon} />
-                  <TextInput
-                    style={[styles.input, { flex: 1 }]}
-                    placeholder="Password"
-                    placeholderTextColor={Colors.textMuted}
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry={!showPassword}
-                    autoCapitalize="none"
-                  />
-                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ padding: 4 }}>
-                    <Ionicons
-                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                      size={18}
-                      color={Colors.textMuted}
-                    />
-                  </TouchableOpacity>
-                </View>
-
-                {/* Confirm Password */}
-                <View style={styles.inputWrap}>
-                  <Ionicons name="lock-closed-outline" size={18} color={Colors.accent} style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Confirm password"
-                    placeholderTextColor={Colors.textMuted}
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    secureTextEntry={!showPassword}
-                    autoCapitalize="none"
-                  />
-                </View>
-
-                {/* Terms */}
-                <TouchableOpacity style={styles.termsRow} onPress={() => setAgreeTerms(!agreeTerms)}>
-                  <View style={[styles.checkbox, agreeTerms && styles.checkboxChecked]}>
-                    {agreeTerms && <Ionicons name="checkmark" size={12} color="#000" />}
-                  </View>
-                  <Text style={styles.termsText}>
-                    I agree to the <Text style={{ color: Colors.accent }}>Terms of Service</Text> and{' '}
-                    <Text style={{ color: Colors.accent }}>Privacy Policy</Text>
-                  </Text>
-                </TouchableOpacity>
-
-                {/* Submit */}
-                <Pressable style={styles.ctaBtn} onPress={handleRegister} disabled={loading}>
+                <Pressable style={styles.ctaBtn} onPress={handleSendReset} disabled={loading}>
                   <LinearGradient
                     colors={[Colors.accent, Colors.iconEnergyCyan]}
                     start={{ x: 0, y: 0 }}
@@ -242,51 +154,15 @@ export default function RegisterScreen() {
                     <ActivityIndicator size="small" color="#06070D" />
                   ) : (
                     <>
-                      <Text style={styles.ctaText}>Create Account</Text>
+                      <Text style={styles.ctaText}>Send Reset Link</Text>
                       <Ionicons name="arrow-forward" size={16} color="#06070D" />
                     </>
                   )}
                 </Pressable>
 
-                {/* Divider */}
-                <View style={styles.divider}>
-                  <LinearGradient
-                    colors={['transparent', GOLD, 'transparent']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.dividerLine}
-                  />
-                  <Text style={styles.dividerText}>OR SIGN UP WITH</Text>
-                  <LinearGradient
-                    colors={['transparent', GOLD, 'transparent']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.dividerLine}
-                  />
-                </View>
-
-                {/* Social buttons */}
-                <View style={styles.socialRow}>
-                  <TouchableOpacity style={styles.socialBtn}>
-                    <SvgXml xml={GOOGLE_SVG} width={16} height={16} />
-                    <Text style={styles.socialLabel}>Google</Text>
-                  </TouchableOpacity>
-
-                  {Platform.OS === 'ios' && (
-                    <TouchableOpacity style={[styles.socialBtn, styles.socialBtnApple]}>
-                      <Ionicons name="logo-apple" size={18} color={Colors.textPrimary} />
-                      <Text style={styles.socialLabel}>Apple</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                {/* Login link */}
-                <TouchableOpacity
-                  style={styles.linkRow}
-                  onPress={() => router.replace('/auth/login')}
-                >
+                <TouchableOpacity style={styles.linkRow} onPress={() => router.back()}>
                   <Text style={styles.linkText}>
-                    Already have an account?{' '}
+                    Remember your password?{' '}
                     <Text style={{ color: Colors.accent, fontFamily: FontFamily.bodyBold }}>
                       Sign In
                     </Text>
@@ -384,7 +260,13 @@ const styles = StyleSheet.create({
     fontSize: FontSize['2xl'],
     color: Colors.textPrimary,
     marginTop: 2,
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.sm,
+  },
+  cardDesc: {
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+    lineHeight: 19,
+    marginBottom: Spacing.xl,
   },
 
   inputWrap: {
@@ -401,27 +283,8 @@ const styles = StyleSheet.create({
   inputIcon: { marginRight: Spacing.sm },
   input: { flex: 1, color: Colors.textPrimary, fontSize: FontSize.md },
 
-  termsRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.sm,
-    marginTop: 4,
-    marginBottom: Spacing.lg,
-  },
-  checkbox: {
-    width: 16,
-    height: 16,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: Colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
-  },
-  checkboxChecked: { backgroundColor: Colors.accent },
-  termsText: { flex: 1, fontSize: FontSize.xs, color: Colors.textSecondary, lineHeight: 16 },
-
   ctaBtn: {
+    marginTop: 4,
     height: 50,
     borderRadius: Radius.md,
     alignItems: 'center',
@@ -431,26 +294,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   ctaText: { fontFamily: FontFamily.bodyBold, fontSize: FontSize.lg, color: '#06070D' },
-
-  divider: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginVertical: Spacing.lg },
-  dividerLine: { flex: 1, height: 1 },
-  dividerText: { fontSize: FontSize.xs, letterSpacing: 1, color: Colors.textMuted },
-
-  socialRow: { flexDirection: 'row', gap: Spacing.md },
-  socialBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(0,255,157,0.3)',
-    paddingVertical: 12,
-  },
-  socialBtnApple: { borderColor: 'rgba(139,92,255,0.4)' },
-  socialLabel: { fontSize: FontSize.sm, color: Colors.textPrimary },
 
   linkRow: { alignItems: 'center', marginTop: Spacing.lg },
   linkText: { fontSize: FontSize.sm, color: Colors.textSecondary },

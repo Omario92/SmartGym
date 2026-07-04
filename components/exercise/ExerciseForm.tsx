@@ -13,9 +13,9 @@ import {
 } from 'react-native';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/lib/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Colors, Spacing, Radius, FontSize, FontFamily } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
-import { Button } from '@/components/ui/Button';
 import {
   MUSCLE_GROUPS,
   EQUIPMENT_LABELS,
@@ -113,17 +113,23 @@ export function ExerciseForm({ defaultValues, onSubmit, loading, submitLabel }: 
         name="muscleGroup"
         render={({ field }) => (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
-            {MUSCLE_GROUPS.map((mg) => (
-              <TouchableOpacity
-                key={mg.id}
-                style={[styles.chip, field.value === mg.id && styles.chipActive]}
-                onPress={() => field.onChange(mg.id)}
-              >
-                <Text style={[styles.chipText, field.value === mg.id && styles.chipTextActive]}>
-                  {mg.icon} {mg.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            {MUSCLE_GROUPS.map((mg) => {
+              const active = field.value === mg.id;
+              return (
+                <TouchableOpacity
+                  key={mg.id}
+                  style={[
+                    styles.chip,
+                    active && { borderColor: mg.color, backgroundColor: mg.color + '22' },
+                  ]}
+                  onPress={() => field.onChange(mg.id)}
+                >
+                  <Text style={[styles.chipText, active && { color: mg.color, fontFamily: FontFamily.bodyBold }]}>
+                    {mg.icon} {mg.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
         )}
       />
@@ -191,7 +197,7 @@ export function ExerciseForm({ defaultValues, onSubmit, loading, submitLabel }: 
               >
                 <Text style={[
                   styles.chipText,
-                  field.value === d.value && { color: d.color, fontWeight: FontWeight.bold },
+                  field.value === d.value && { color: d.color, fontFamily: FontFamily.bodyBold },
                 ]}>
                   {d.label}
                 </Text>
@@ -306,13 +312,22 @@ export function ExerciseForm({ defaultValues, onSubmit, loading, submitLabel }: 
       />
 
       {/* Submit */}
-      <Button
-        title={loading ? 'Saving…' : (submitLabel ?? 'Save Exercise')}
-        variant="primary"
-        fullWidth
+      <TouchableOpacity
+        style={styles.submitBtn}
         onPress={handleSubmit(onSubmit)}
-        style={{ marginTop: Spacing.xl }}
-      />
+        disabled={loading}
+        activeOpacity={0.85}
+      >
+        <LinearGradient
+          colors={[Colors.accent, Colors.iconEnergyCyan]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <Text style={styles.submitBtnText}>
+          {loading ? 'Saving…' : (submitLabel ?? 'Save Exercise')}
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -336,7 +351,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: Spacing.md,
     marginBottom: Spacing.xs,
-    fontWeight: FontWeight.medium,
+    fontFamily: FontFamily.bodyMedium,
   },
   input: {
     backgroundColor: Colors.bgInput,
@@ -370,7 +385,7 @@ const styles = StyleSheet.create({
   },
   chipActive: { borderColor: Colors.accent, backgroundColor: Colors.accent + '22' },
   chipText: { fontSize: FontSize.xs, color: Colors.textSecondary },
-  chipTextActive: { color: Colors.accent, fontWeight: FontWeight.semibold },
+  chipTextActive: { color: Colors.accent, fontFamily: FontFamily.bodyBold },
 
   typePill: {
     flex: 1,
@@ -412,7 +427,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     fontSize: FontSize.xs,
     color: Colors.accent,
-    fontWeight: FontWeight.bold,
+    fontFamily: FontFamily.bodyBold,
   },
   removeBtn: { padding: 4 },
   addRowBtn: {
@@ -421,5 +436,19 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingVertical: Spacing.sm,
     marginBottom: Spacing.sm,
+  },
+
+  submitBtn: {
+    marginTop: Spacing.xl,
+    height: 50,
+    borderRadius: Radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  submitBtnText: {
+    color: '#06070D',
+    fontFamily: FontFamily.bodyBold,
+    fontSize: FontSize.lg,
   },
 });

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
 import Svg, { Path, Defs, LinearGradient, Stop, Circle, Text as SvgText } from 'react-native-svg';
-import { Colors, Spacing, FontSize, FontWeight } from '@/lib/theme';
+import { Colors, Spacing, FontSize } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 
 export interface LineChartData {

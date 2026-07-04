@@ -30,7 +30,7 @@ import Animated, {
   interpolate,
   Easing,
 } from 'react-native-reanimated';
-import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/lib/theme';
+import { Colors, Spacing, Radius, FontSize, FontFamily, Shadow } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -365,7 +365,7 @@ const ProfileScreen: React.FC<{
       {/* Days per week */}
       <Text style={styles.profileSectionLabel}>
         Training Days / Week:{' '}
-        <Text style={{ color: Colors.accent, fontWeight: FontWeight.bold }}>
+        <Text style={{ color: Colors.accent, fontFamily: FontFamily.bodyBold }}>
           {profile.daysPerWeek}
         </Text>
       </Text>
@@ -1121,7 +1121,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginBottom: Spacing.sm,
     marginTop: Spacing.md,
-    fontWeight: FontWeight.semibold,
+    fontFamily: FontFamily.bodyBold,
   },
   chipRow: {
     flexDirection: 'row',
@@ -1144,7 +1144,7 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontSize: FontSize.sm,
-    fontWeight: FontWeight.medium,
+    fontFamily: FontFamily.bodyMedium,
   },
   expRow: {
     flexDirection: 'row',
@@ -1165,7 +1165,7 @@ const styles = StyleSheet.create({
   },
   expBtnText: {
     fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
+    fontFamily: FontFamily.bodyBold,
   },
   stepperRow: {
     flexDirection: 'row',
@@ -1204,7 +1204,7 @@ const styles = StyleSheet.create({
   },
   splitCardTitle: {
     fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
+    fontFamily: FontFamily.bodyBold,
   },
 
   // Loading screen

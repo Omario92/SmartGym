@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/lib/theme';
+import { Colors, Spacing, Radius, FontSize, FontFamily, Shadow } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: FontSize.sm,
     color: Colors.accent,
-    fontWeight: FontWeight.semibold,
+    fontFamily: FontFamily.bodyBold,
   },
 
   // Modal
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
   section: { marginBottom: Spacing.xl },
   sectionLabel: {
     fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
+    fontFamily: FontFamily.bodyBold,
     color: Colors.textSecondary,
     marginBottom: Spacing.sm,
     textTransform: 'uppercase',
@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
     marginRight: Spacing.sm,
     marginTop: 1,
   },
-  stepNum: { fontSize: 11, fontWeight: FontWeight.bold, color: Colors.accent },
+  stepNum: { fontSize: 11, fontFamily: FontFamily.bodyBold, color: Colors.accent },
   listText: { fontSize: FontSize.sm, lineHeight: 20, flex: 1 },
 
   breathingCard: {

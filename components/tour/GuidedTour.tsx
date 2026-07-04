@@ -14,7 +14,7 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Radius, Spacing, FontSize, FontWeight, Shadow } from '@/lib/theme';
+import { Colors, Radius, Spacing, FontSize, Shadow } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { Button } from '@/components/ui/Button';
 import { useStore } from '@/store';

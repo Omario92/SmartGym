@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/lib/theme';
+import { Colors, Spacing, Radius, FontSize, FontFamily } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { Badge } from '@/components/ui/Badge';
 import { ExerciseImage } from './ExerciseImage';
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
   },
   stepNumText: {
     fontSize: FontSize.xs,
-    fontWeight: FontWeight.bold,
+    fontFamily: FontFamily.bodyBold,
   },
   stepText: {
     flex: 1,
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
   },
   deleteBtnText: {
     color: Colors.error,
-    fontWeight: FontWeight.semibold,
+    fontFamily: FontFamily.bodyBold,
   },
   prSummary: {
     flexDirection: 'row',

@@ -14,7 +14,7 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
-import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/lib/theme';
+import { Colors, Spacing, Radius, FontSize, FontFamily, Shadow } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { ExerciseImage } from './ExerciseImage';
 import { useStore } from '@/store';
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
   difficultyBadgeText: {
     color: '#fff',
     fontSize: FontSize.xs,
-    fontWeight: FontWeight.semibold,
+    fontFamily: FontFamily.bodyBold,
     textTransform: 'capitalize',
   },
   customImageBadge: {
@@ -291,6 +291,6 @@ const styles = StyleSheet.create({
   customBadgeText: {
     color: Colors.accent,
     fontSize: FontSize.xs,
-    fontWeight: FontWeight.semibold,
+    fontFamily: FontFamily.bodyBold,
   },
 });

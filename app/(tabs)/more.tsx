@@ -9,19 +9,23 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
+  Pressable,
   Switch,
   Alert,
   Linking,
   Modal,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/lib/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SvgXml } from 'react-native-svg';
+import { Colors, Spacing, Radius, FontSize, FontFamily, Shadow } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { PREMIUM_SVG, FAVORITE_SVG } from '@/components/ui/designIcons';
 import { CustomExerciseManager } from '@/components/exercise/CustomExerciseManager';
 import { GlobalExerciseSearch } from '@/components/exercise/GlobalExerciseSearch';
 import { useStore, selectCustomExercises, selectFavoriteIds } from '@/store';
@@ -109,12 +113,12 @@ const PremiumCard: React.FC<{ isPremium: boolean; onUpgrade: () => void }> = ({
 }) => {
   if (isPremium) {
     return (
-      <Card style={styles.premiumCard} glowing>
+      <Card style={styles.premiumActiveCard} glowing>
         <View style={styles.premiumInner}>
           <Text style={{ fontSize: 36 }}>⭐</Text>
           <View style={{ flex: 1, marginLeft: Spacing.md }}>
             <Text variant="h4" style={{ marginBottom: 4 }}>
-              SmartGym Pro
+              Smart Gym Plus Pro
             </Text>
             <Text color="accent" style={{ fontSize: FontSize.sm }}>
               Premium Member
@@ -127,16 +131,22 @@ const PremiumCard: React.FC<{ isPremium: boolean; onUpgrade: () => void }> = ({
   }
 
   return (
-    <Card style={[styles.premiumCard, styles.premiumGradientCard]} premium>
+    <View style={styles.premiumCard}>
+      <LinearGradient
+        colors={['#241238', '#0C2432']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
       <View style={styles.premiumContent}>
         <View style={styles.premiumHeader}>
-          <Text style={{ fontSize: 36 }}>👑</Text>
+          <SvgXml xml={PREMIUM_SVG} width={40} height={40} />
           <View style={{ flex: 1, marginLeft: Spacing.md }}>
             <Text variant="h4" style={{ marginBottom: 4 }}>
-              SmartGym Pro
+              Smart Gym Plus Pro
             </Text>
-            <Text color="secondary" style={{ fontSize: FontSize.sm, lineHeight: 18 }}>
-              Unlock AI trainer, unlimited routines, advanced analytics & more
+            <Text style={{ fontSize: FontSize.sm, lineHeight: 18, color: '#C8C8E0' }}>
+              Unlock AI trainer, unlimited routines, advanced analytics &amp; more
             </Text>
           </View>
         </View>
@@ -156,19 +166,20 @@ const PremiumCard: React.FC<{ isPremium: boolean; onUpgrade: () => void }> = ({
           ))}
         </View>
 
-        <Button
-          title="Upgrade to Pro — $9.99/mo"
-          variant="primary"
-          size="lg"
-          fullWidth
-          style={{ marginTop: Spacing.md }}
-          onPress={onUpgrade}
-        />
-        <Text color="muted" style={styles.premiumDisclaimer}>
+        <Pressable style={styles.premiumUpgradeBtn} onPress={onUpgrade}>
+          <LinearGradient
+            colors={[Colors.iconPremiumGold, '#F5B942']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <Text style={styles.premiumUpgradeBtnText}>Upgrade to Pro — $9.99/mo</Text>
+        </Pressable>
+        <Text style={styles.premiumDisclaimer}>
           7-day free trial • Cancel anytime
         </Text>
       </View>
-    </Card>
+    </View>
   );
 };
 
@@ -289,7 +300,7 @@ export default function MoreScreen() {
             <Text style={styles.settingLabel}>My Custom Exercises</Text>
             {customExercises.length > 0 ? (
               <View style={styles.countBadge}>
-                <Text style={{ color: Colors.accent, fontSize: FontSize.xs, fontWeight: FontWeight.bold }}>
+                <Text style={{ color: Colors.accent, fontSize: FontSize.xs, fontFamily: FontFamily.bodyBold }}>
                   {customExercises.length}
                 </Text>
               </View>
@@ -303,12 +314,12 @@ export default function MoreScreen() {
             activeOpacity={0.75}
           >
             <View style={styles.settingIcon}>
-              <Text style={{ fontSize: 18 }}>❤️</Text>
+              <SvgXml xml={FAVORITE_SVG} width={18} height={18} />
             </View>
             <Text style={styles.settingLabel}>Favorite Exercises</Text>
             {favoriteIds.length > 0 ? (
               <View style={[styles.countBadge, { backgroundColor: Colors.error + '22', borderColor: Colors.error + '44' }]}>
-                <Text style={{ color: Colors.error, fontSize: FontSize.xs, fontWeight: FontWeight.bold }}>
+                <Text style={{ color: Colors.error, fontSize: FontSize.xs, fontFamily: FontFamily.bodyBold }}>
                   {favoriteIds.length}
                 </Text>
               </View>
@@ -558,7 +569,11 @@ export default function MoreScreen() {
 
         {/* App info */}
         <View style={styles.appInfo}>
-          <Text style={styles.appLogo}>💪</Text>
+          <Image
+            source={require('@/assets/logo/logo-smart-gym-plus-2.png')}
+            style={styles.appLogoImg}
+            resizeMode="contain"
+          />
           <Text variant="h4" center>
             SmartGym
           </Text>
@@ -582,14 +597,24 @@ const styles = StyleSheet.create({
   scrollContent: { paddingBottom: Spacing['6xl'] },
 
   // Premium card
-  premiumCard: {
+  premiumActiveCard: {
     marginHorizontal: Spacing.lg,
     marginBottom: Spacing.xl,
   },
-  premiumGradientCard: {
-    backgroundColor: Colors.bgCard,
+  premiumCard: {
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.xl,
+    borderRadius: Radius.lg,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,211,106,0.35)',
+    shadowColor: Colors.iconPremiumGold,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+    elevation: 6,
   },
-  premiumContent: { gap: Spacing.sm },
+  premiumContent: { gap: Spacing.sm, padding: Spacing.lg },
   premiumHeader: { flexDirection: 'row', alignItems: 'flex-start' },
   premiumFeatures: {
     flexDirection: 'row',
@@ -598,22 +623,41 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
   },
   premiumFeature: {
-    backgroundColor: Colors.accentGlow2,
+    backgroundColor: 'rgba(255,211,106,0.14)',
     borderRadius: Radius.sm,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 4,
+  },
+  premiumUpgradeBtn: {
+    marginTop: Spacing.md,
+    borderRadius: Radius.md,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.lg,
+    shadowColor: Colors.iconPremiumGold,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  premiumUpgradeBtnText: {
+    fontSize: FontSize.lg,
+    fontFamily: FontFamily.bodyBold,
+    color: '#1A1200',
   },
   premiumDisclaimer: {
     fontSize: FontSize.xs,
     textAlign: 'center',
     marginTop: Spacing.sm,
+    color: Colors.textMuted,
   },
   premiumInner: { flexDirection: 'row', alignItems: 'center' },
 
   // Section header
   sectionTitle: {
     fontSize: FontSize.xs,
-    fontWeight: FontWeight.semibold,
+    fontFamily: FontFamily.bodyBold,
     letterSpacing: 1,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
@@ -660,6 +704,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xl,
   },
   appLogo: { fontSize: 48, marginBottom: Spacing.sm },
+  appLogoImg: { width: 40, height: 40, marginBottom: Spacing.sm },
 
   // Modal header
   modalHeader: {

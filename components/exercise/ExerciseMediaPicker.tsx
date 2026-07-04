@@ -5,7 +5,7 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/lib/theme';
+import { Colors, Spacing, Radius, FontSize, FontFamily } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { pickMedia, uploadMedia, type MediaPickType } from '@/lib/mediaUploadService';
 import type { MediaItem } from '@/lib/supabaseTypes';
@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     color: Colors.textSecondary,
     marginBottom: Spacing.xs,
-    fontWeight: FontWeight.medium,
+    fontFamily: FontFamily.bodyMedium,
   },
   hint: { fontSize: FontSize.xs, color: Colors.textMuted, marginBottom: Spacing.sm },
   row: { flexDirection: 'row', gap: Spacing.sm },

@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, TextInput, KeyboardAvoidingView, Platform
 import { Stack, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/lib/theme';
+import { Colors, Spacing, Radius, FontSize, FontFamily } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { Card } from '@/components/ui/Card';
 import { useStore } from '@/store';
@@ -118,7 +118,7 @@ export default function OneRMCalculatorScreen() {
                   {percentages.map((item, index) => (
                     <View key={item.percent} style={[styles.percentageRow, index % 2 === 0 && styles.rowEven]}>
                       <Text style={[styles.cell, { flex: 1, color: Colors.accent }]}>{item.percent}%</Text>
-                      <Text style={[styles.cell, { flex: 1.5, textAlign: 'center', fontWeight: FontWeight.bold }]}>
+                      <Text style={[styles.cell, { flex: 1.5, textAlign: 'center', fontFamily: FontFamily.bodyBold }]}>
                         {((oneRM * item.percent) / 100).toFixed(1)} {settings.weightUnit}
                       </Text>
                       <Text style={[styles.cell, { flex: 1, textAlign: 'right', color: Colors.textSecondary }]}>
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
   },
   resultValue: {
     fontSize: 48,
-    fontWeight: FontWeight.bold,
+    fontFamily: FontFamily.bodyBold,
     color: Colors.textPrimary,
   },
   resultUnit: {
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
   headerCell: {
     fontSize: FontSize.xs,
     color: Colors.textSecondary,
-    fontWeight: FontWeight.semibold,
+    fontFamily: FontFamily.bodyBold,
     textTransform: 'uppercase',
   },
   percentageRow: {

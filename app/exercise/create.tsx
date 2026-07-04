@@ -10,7 +10,7 @@ import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity } from 'react-native';
-import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/lib/theme';
+import { Colors, Spacing, Radius, FontSize, FontFamily } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { ExerciseForm, type ExerciseFormValues } from '@/components/exercise/ExerciseForm';
 import { ExerciseMediaPicker } from '@/components/exercise/ExerciseMediaPicker';
@@ -107,7 +107,7 @@ export default function CreateExerciseScreen() {
             Sign in to save exercises to the cloud.{' '}
           </Text>
           <TouchableOpacity onPress={() => router.push('/auth/login')}>
-            <Text style={{ color: Colors.accent, fontSize: FontSize.xs, fontWeight: FontWeight.semibold }}>
+            <Text style={{ color: Colors.accent, fontSize: FontSize.xs, fontFamily: FontFamily.bodyBold }}>
               Sign In
             </Text>
           </TouchableOpacity>
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
   },
   backBtn: { padding: Spacing.xs, width: 40 },
-  headerTitle: { flex: 1, textAlign: 'center', fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.textPrimary },
+  headerTitle: { flex: 1, textAlign: 'center', fontSize: FontSize.lg, fontFamily: FontFamily.display, color: Colors.textPrimary },
   authBanner: {
     flexDirection: 'row',
     alignItems: 'center',

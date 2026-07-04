@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text as RNText, TextProps, StyleSheet } from 'react-native';
-import { Colors, FontSize, FontWeight } from '@/lib/theme';
+import { Colors, FontSize, FontFamily } from '@/lib/theme';
 
 type Variant = 'h1' | 'h2' | 'h3' | 'h4' | 'body' | 'bodyLg' | 'bodySm' | 'caption' | 'label';
 type Color = 'primary' | 'secondary' | 'muted' | 'accent' | 'error' | 'warning' | 'disabled';
@@ -14,15 +14,15 @@ interface Props extends TextProps {
 }
 
 const variantStyles: Record<Variant, object> = {
-  h1: { fontSize: FontSize['4xl'], fontWeight: FontWeight.black, letterSpacing: -1 },
-  h2: { fontSize: FontSize['3xl'], fontWeight: FontWeight.bold, letterSpacing: -0.5 },
-  h3: { fontSize: FontSize['2xl'], fontWeight: FontWeight.bold },
-  h4: { fontSize: FontSize.xl, fontWeight: FontWeight.semibold },
-  bodyLg: { fontSize: FontSize.lg, fontWeight: FontWeight.regular },
-  body: { fontSize: FontSize.md, fontWeight: FontWeight.regular },
-  bodySm: { fontSize: FontSize.sm, fontWeight: FontWeight.regular },
-  caption: { fontSize: FontSize.xs, fontWeight: FontWeight.regular },
-  label: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, letterSpacing: 0.5 },
+  h1: { fontSize: FontSize['4xl'], fontFamily: FontFamily.display, letterSpacing: -1 },
+  h2: { fontSize: FontSize['3xl'], fontFamily: FontFamily.display, letterSpacing: -0.5 },
+  h3: { fontSize: FontSize['2xl'], fontFamily: FontFamily.display },
+  h4: { fontSize: FontSize.xl, fontFamily: FontFamily.displayMedium },
+  bodyLg: { fontSize: FontSize.lg, fontFamily: FontFamily.body },
+  body: { fontSize: FontSize.md, fontFamily: FontFamily.body },
+  bodySm: { fontSize: FontSize.sm, fontFamily: FontFamily.body },
+  caption: { fontSize: FontSize.xs, fontFamily: FontFamily.body },
+  label: { fontSize: FontSize.sm, fontFamily: FontFamily.bodyBold, letterSpacing: 0.5 },
 };
 
 const colorStyles: Record<Color, string> = {
@@ -49,8 +49,8 @@ export const Text: React.FC<Props> = ({
       style={[
         variantStyles[variant],
         { color: colorStyles[color] },
-        bold && { fontWeight: FontWeight.bold },
-        semibold && { fontWeight: FontWeight.semibold },
+        bold && { fontFamily: FontFamily.bodyBold },
+        semibold && { fontFamily: FontFamily.bodyBold },
         center && { textAlign: 'center' },
         style,
       ]}

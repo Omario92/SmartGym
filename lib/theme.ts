@@ -63,6 +63,16 @@ export const Colors = {
   overlayLight: 'rgba(0,0,0,0.4)',
   spotlightBorder: 'rgba(0, 255, 157, 0.6)',
 
+  // Icon system — "Option 02 / Premium Cinematic" palette (deliberately
+  // distinct from the core brand accent, used for the Coach AI card,
+  // panels and streak dots on the Routines screen).
+  iconPanel: '#0C0E18',
+  iconInactive: '#9697BE',
+  iconActive: '#00F5A0',
+  iconPremiumGold: '#FFD36A',
+  iconCinematicViolet: '#8B5CFF',
+  iconEnergyCyan: '#00D1FF',
+
   // Liquid glass surfaces
   glassBg: 'rgba(255,255,255,0.045)',
   glassBgStrong: 'rgba(255,255,255,0.08)',
@@ -113,6 +123,17 @@ export const FontSize = {
   '3xl': 28,
   '4xl': 34,
   '5xl': 40,
+} as const;
+
+export const FontFamily = {
+  display: 'SpaceGrotesk_700Bold',
+  displayMedium: 'SpaceGrotesk_500Medium',
+  displayRegular: 'SpaceGrotesk_400Regular',
+  body: 'Satoshi-Regular',
+  bodyMedium: 'Satoshi-Medium',
+  bodyBold: 'Satoshi-Bold',
+  bodyBlack: 'Satoshi-Black',
+  bodyLight: 'Satoshi-Light',
 } as const;
 
 export const FontWeight = {

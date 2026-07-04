@@ -17,7 +17,7 @@ import {
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/lib/theme';
+import { Colors, Spacing, Radius, FontSize, FontFamily } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { useStore } from '@/store';
 import { useMyCustomExercises } from '@/lib/exerciseService';
@@ -237,7 +237,7 @@ export default function MyCloudExercisesScreen() {
               refreshing={isRefetching}
               onRefresh={refetch}
               tintColor={Colors.accent}
-              colors={[Colors.accent]}
+              colors={[Colors.accent, Colors.accentDim]}
             />
           }
           ItemSeparatorComponent={() => <View style={styles.separator} />}
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontSize: FontSize.lg,
-    fontWeight: FontWeight.bold,
+    fontFamily: FontFamily.display,
     color: Colors.textPrimary,
   },
   createBtn: { padding: Spacing.sm, width: 40, alignItems: 'flex-end' },
@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
   },
   statItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  statNum: { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.accent },
+  statNum: { fontSize: FontSize.md, fontFamily: FontFamily.bodyBold, color: Colors.accent },
   statLabel: { fontSize: FontSize.xs, color: Colors.textMuted },
   statDivider: { width: 1, height: 16, backgroundColor: Colors.border, marginHorizontal: Spacing.md },
 
@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
   rowInfo: { flex: 1 },
   rowName: {
     fontSize: FontSize.md,
-    fontWeight: FontWeight.semibold,
+    fontFamily: FontFamily.bodyBold,
     color: Colors.textPrimary,
     marginBottom: 2,
   },
@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 1,
   },
-  diffText: { fontSize: 10, fontWeight: FontWeight.semibold, textTransform: 'capitalize' },
+  diffText: { fontSize: 10, fontFamily: FontFamily.bodyBold, textTransform: 'capitalize' },
 
   mediaBadge: {
     flexDirection: 'row',
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
   emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl },
   emptyTitle: {
     fontSize: FontSize.lg,
-    fontWeight: FontWeight.bold,
+    fontFamily: FontFamily.bodyBold,
     color: Colors.textPrimary,
     marginBottom: Spacing.sm,
   },
@@ -383,7 +383,7 @@ const styles = StyleSheet.create({
   },
   emptyBtnText: {
     fontSize: FontSize.md,
-    fontWeight: FontWeight.bold,
+    fontFamily: FontFamily.bodyBold,
     color: Colors.bg,
   },
 

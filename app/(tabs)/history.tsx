@@ -13,11 +13,14 @@ import Reanimated, {
   useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Rect, Text as SvgText } from 'react-native-svg';
-import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/lib/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SvgXml } from 'react-native-svg';
+import { Colors, Spacing, Radius, FontSize, FontFamily, Shadow } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { Card } from '@/components/ui/Card';
 import { ProgressRing } from '@/components/ui/ProgressRing';
+import { GlowOrb } from '@/components/ui/GlowOrb';
+import { AWARD_SVG, STREAK_SVG } from '@/components/ui/designIcons';
 import { useStore, selectExercisePRs, getExercise1RMHistory, selectCustomExercises } from '@/store';
 import type { WorkoutSession } from '@/store';
 import { findExerciseById } from '@/lib/exercises';
@@ -33,9 +36,6 @@ const formatDuration = (seconds: number): string => {
   if (h > 0) return `${h}h ${m % 60}m`;
   return `${m}m`;
 };
-
-const getDayLabel = (date: Date) =>
-  date.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 1);
 
 const getMonthLabel = (date: Date) =>
   date.toLocaleDateString('en-US', { month: 'short' });
@@ -57,7 +57,7 @@ const useToast = () => {
 
   const ToastComponent = () => (
     <Animated.View style={[styles.toast, { opacity }]} pointerEvents="none">
-      <Text style={{ color: '#000', fontWeight: FontWeight.semibold, fontSize: FontSize.sm }}>
+      <Text style={{ color: '#000', fontFamily: FontFamily.bodyBold, fontSize: FontSize.sm }}>
         {message}
       </Text>
     </Animated.View>
@@ -86,51 +86,9 @@ const WeeklyBar: React.FC<{ sessions: WorkoutSession[] }> = ({ sessions }) => {
       {days.map((day, i) => (
         <View key={i} style={styles.weekDay}>
           <View style={[styles.weekDot, worked[i] && styles.weekDotActive]} />
-          <Text color="muted" style={{ fontSize: FontSize.xs }}>{day}</Text>
+          <Text style={{ fontSize: FontSize.xs, color: Colors.iconInactive }}>{day}</Text>
         </View>
       ))}
-    </View>
-  );
-};
-
-// ─── Volume Bar Chart ─────────────────────────────────────────────────────────
-
-const VolumeChart: React.FC<{ sessions: WorkoutSession[] }> = ({ sessions }) => {
-  const W = SCREEN_W - Spacing.lg * 2 - Spacing.xl * 2;
-  const H = 100;
-  const BAR_COUNT = 7;
-
-  const bars = Array.from({ length: BAR_COUNT }, (_, i) => {
-    const date = new Date();
-    date.setDate(date.getDate() - (BAR_COUNT - 1 - i));
-    const dateStr = date.toISOString().split('T')[0];
-    const volume = sessions
-      .filter((s) => s.startedAt.startsWith(dateStr))
-      .reduce((acc, s) => acc + (s.totalVolume ?? 0), 0);
-    return { label: getDayLabel(date), volume };
-  });
-
-  const maxVol = Math.max(...bars.map((b) => b.volume), 1);
-  const barW = W / BAR_COUNT - 8;
-
-  return (
-    <View style={{ marginTop: Spacing.md }}>
-      <Svg width={W} height={H + 20}>
-        {bars.map((bar, i) => {
-          const barH = Math.max((bar.volume / maxVol) * H, bar.volume > 0 ? 4 : 0);
-          const x = i * (W / BAR_COUNT) + 4;
-          const y = H - barH;
-          return (
-            <React.Fragment key={i}>
-              <Rect x={x} y={y} width={barW} height={Math.max(barH, 0)} rx={4}
-                fill={bar.volume > 0 ? Colors.accent : Colors.bgCard2}
-                opacity={bar.volume > 0 ? 0.9 : 0.5} />
-              <SvgText x={x + barW / 2} y={H + 15} textAnchor="middle"
-                fill={Colors.textMuted} fontSize={10}>{bar.label}</SvgText>
-            </React.Fragment>
-          );
-        })}
-      </Svg>
     </View>
   );
 };
@@ -141,8 +99,9 @@ const SWIPE_THRESHOLD = 80;
 
 const SwipeableSessionCard: React.FC<{
   session: WorkoutSession;
+  color: string;
   onDelete: (id: string) => void;
-}> = ({ session, onDelete }) => {
+}> = ({ session, color, onDelete }) => {
   const translateX = useSharedValue(0);
   const date = new Date(session.startedAt);
   const dateLabel = date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
@@ -180,40 +139,41 @@ const SwipeableSessionCard: React.FC<{
 
       <GestureDetector gesture={pan}>
         <Reanimated.View style={[styles.sessionCard, animStyle]}>
+          <View style={[styles.sessionColorBar, { backgroundColor: color, shadowColor: color }]} />
           <View style={styles.sessionLeft}>
             <View style={styles.sessionDateBox}>
-              <Text style={{ fontSize: FontSize.xl, fontWeight: FontWeight.black, color: Colors.accent }}>
+              <Text style={{ fontSize: FontSize.xl, fontFamily: FontFamily.bodyBlack, color: Colors.iconActive }}>
                 {date.getDate()}
               </Text>
-              <Text color="muted" style={{ fontSize: FontSize.xs }}>{getMonthLabel(date)}</Text>
+              <Text style={{ fontSize: FontSize.xs, color: Colors.iconInactive }}>{getMonthLabel(date)}</Text>
             </View>
           </View>
           <View style={styles.sessionRight}>
-            <Text semibold style={{ marginBottom: 2 }}>{session.routineName}</Text>
-            <Text color="muted" style={{ fontSize: FontSize.xs, marginBottom: Spacing.sm }}>
+            <Text semibold style={{ marginBottom: 2, fontSize: FontSize.lg }}>{session.routineName}</Text>
+            <Text style={{ fontSize: FontSize.xs, marginBottom: Spacing.sm, color: Colors.iconInactive }}>
               {timeLabel} • {dateLabel}
             </Text>
             <View style={styles.sessionStats}>
               {session.duration != null && (
                 <View style={styles.sessionStat}>
-                  <Ionicons name="time-outline" size={12} color={Colors.textMuted} />
-                  <Text color="muted" style={{ fontSize: FontSize.xs, marginLeft: 3 }}>
+                  <Ionicons name="time-outline" size={12} color={Colors.iconInactive} />
+                  <Text style={{ fontSize: FontSize.xs, marginLeft: 3, color: Colors.iconInactive }}>
                     {formatDuration(session.duration)}
                   </Text>
                 </View>
               )}
               {session.totalSets != null && (
                 <View style={styles.sessionStat}>
-                  <Ionicons name="layers-outline" size={12} color={Colors.textMuted} />
-                  <Text color="muted" style={{ fontSize: FontSize.xs, marginLeft: 3 }}>
+                  <Ionicons name="layers-outline" size={12} color={Colors.iconInactive} />
+                  <Text style={{ fontSize: FontSize.xs, marginLeft: 3, color: Colors.iconInactive }}>
                     {session.totalSets} sets
                   </Text>
                 </View>
               )}
               {session.totalVolume != null && session.totalVolume > 0 && (
                 <View style={styles.sessionStat}>
-                  <Ionicons name="barbell-outline" size={12} color={Colors.textMuted} />
-                  <Text color="muted" style={{ fontSize: FontSize.xs, marginLeft: 3 }}>
+                  <Ionicons name="barbell-outline" size={12} color={Colors.iconInactive} />
+                  <Text style={{ fontSize: FontSize.xs, marginLeft: 3, color: Colors.iconInactive }}>
                     {session.totalVolume.toLocaleString()} kg
                   </Text>
                 </View>
@@ -240,7 +200,7 @@ const ClearAllModal: React.FC<{ visible: boolean; onConfirm: () => void; onCance
           This will permanently delete all your workout sessions. This action cannot be undone.
         </Text>
         <TouchableOpacity style={styles.modalConfirmBtn} onPress={onConfirm}>
-          <Text style={{ color: '#fff', fontWeight: FontWeight.bold }}>Yes, Clear All</Text>
+          <Text style={{ color: '#fff', fontFamily: FontFamily.bodyBold }}>Yes, Clear All</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.modalCancelBtn} onPress={onCancel}>
           <Text color="secondary">Cancel</Text>
@@ -267,11 +227,20 @@ type Period = 'week' | 'month' | 'year';
 
 export default function HistoryScreen() {
   const sessions = useStore((s) => s.sessions);
+  const routines = useStore((s) => s.routines);
   const deleteSession = useStore((s) => s.deleteSession);
   const clearHistory = useStore((s) => s.clearHistory);
   const exercisePRs = useStore(selectExercisePRs);
   const customExercises = useStore(selectCustomExercises);
   const prExerciseIds = Object.keys(exercisePRs);
+
+  const routineColorById = useMemo(() => {
+    const map = new Map<string, string>();
+    routines.forEach((r) => map.set(r.id, r.color || Colors.iconActive));
+    return map;
+  }, [routines]);
+  const colorForSession = (session: WorkoutSession) =>
+    (session.routineId && routineColorById.get(session.routineId)) || Colors.iconActive;
 
   const [period, setPeriod] = useState<Period>('week');
   const [tab, setTab] = useState<'log' | 'stats' | 'strength' | 'awards'>('log');
@@ -321,18 +290,18 @@ export default function HistoryScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Text variant="h2">History</Text>
+        <Text style={styles.historyTitle}>History</Text>
         <View style={styles.headerActions}>
           {sessions.length > 0 && (
             <TouchableOpacity style={styles.headerBtn} onPress={() => setShowClearModal(true)}>
-              <Ionicons name="trash-outline" size={18} color={Colors.textSecondary} />
+              <Ionicons name="trash-outline" size={18} color={Colors.iconInactive} />
             </TouchableOpacity>
           )}
           <TouchableOpacity
             style={styles.headerBtn}
             onPress={() => Alert.alert('Calendar', 'The workout calendar and scheduling feature is coming soon!')}
           >
-            <Ionicons name="calendar-outline" size={18} color={Colors.textSecondary} />
+            <Ionicons name="calendar-outline" size={18} color={Colors.iconInactive} />
           </TouchableOpacity>
         </View>
       </View>
@@ -345,7 +314,7 @@ export default function HistoryScreen() {
             style={[styles.periodBtn, period === p && styles.periodBtnActive]}
             onPress={() => setPeriod(p)}
           >
-            <Text style={[styles.periodLabel, { color: period === p ? '#000' : Colors.textSecondary }]}>
+            <Text style={[styles.periodLabel, { color: period === p ? '#06070D' : Colors.iconInactive }]}>
               {p.charAt(0).toUpperCase() + p.slice(1)}
             </Text>
           </TouchableOpacity>
@@ -354,39 +323,41 @@ export default function HistoryScreen() {
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Overview */}
-        <Card style={styles.overviewCard}>
+        <View style={styles.overviewCard}>
+          <LinearGradient
+            colors={['#1C1330', '#0A1F2B']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <GlowOrb size={150} color="rgba(0,209,255,0.22)" style={{ top: -50, right: -40 }} />
           <View style={styles.overviewTop}>
-            <ProgressRing size={100} strokeWidth={9} progress={progress}
-              label={`${workoutCount}`} sublabel={`/ ${periodTarget}`} />
+            <ProgressRing size={86} strokeWidth={8} progress={progress}
+              color={Colors.iconActive} bgColor="rgba(255,255,255,0.08)">
+              <Text style={{ fontFamily: FontFamily.bodyBold, fontSize: 18, color: Colors.textPrimary, lineHeight: 20 }}>
+                {workoutCount}
+              </Text>
+              <Text style={{ fontFamily: FontFamily.body, fontSize: 10, color: Colors.iconInactive, marginTop: 1 }}>
+                / {periodTarget}
+              </Text>
+            </ProgressRing>
             <View style={styles.overviewStats}>
               <View style={styles.overviewStat}>
-                <Text variant="h3" color="accent">{workoutCount}</Text>
-                <Text color="muted" style={{ fontSize: FontSize.xs }}>Workouts</Text>
+                <Text style={styles.overviewStatNumber}>{workoutCount}</Text>
+                <Text style={{ fontSize: FontSize.xs, color: Colors.iconInactive }}>Workouts</Text>
               </View>
-              <View style={styles.overviewDivider} />
               <View style={styles.overviewStat}>
-                <Text variant="h3">{formatDuration(totalDuration)}</Text>
-                <Text color="muted" style={{ fontSize: FontSize.xs }}>Total Time</Text>
+                <Text style={[styles.overviewStatNumber, { color: Colors.textPrimary }]}>{formatDuration(totalDuration)}</Text>
+                <Text style={{ fontSize: FontSize.xs, color: Colors.iconInactive }}>Total Time</Text>
               </View>
-              <View style={styles.overviewDivider} />
               <View style={styles.overviewStat}>
-                <Text variant="h3">{(totalVolume / 1000).toFixed(1)}t</Text>
-                <Text color="muted" style={{ fontSize: FontSize.xs }}>Volume</Text>
+                <Text style={[styles.overviewStatNumber, { color: Colors.textPrimary }]}>{(totalVolume / 1000).toFixed(1)}t</Text>
+                <Text style={{ fontSize: FontSize.xs, color: Colors.iconInactive }}>Volume</Text>
               </View>
             </View>
           </View>
           <WeeklyBar sessions={sessions} />
-        </Card>
-
-        {sessions.length > 0 && (
-          <Card style={styles.chartCard}>
-            <Text semibold style={{ marginBottom: 4 }}>Volume (Last 7 Days)</Text>
-            <Text color="muted" style={{ fontSize: FontSize.xs, marginBottom: Spacing.sm }}>
-              Total weight lifted per day
-            </Text>
-            <VolumeChart sessions={sessions} />
-          </Card>
-        )}
+        </View>
 
         {/* Tab switcher */}
         <View style={styles.tabRow}>
@@ -394,9 +365,9 @@ export default function HistoryScreen() {
             <TouchableOpacity key={t} onPress={() => setTab(t)}
               style={[styles.tabBtn, tab === t && styles.tabBtnActive]}>
               <Text style={{
-                color: tab === t ? Colors.accent : Colors.textSecondary,
-                fontWeight: tab === t ? FontWeight.semibold : FontWeight.regular,
-                fontSize: FontSize.sm,
+                color: tab === t ? Colors.iconActive : Colors.iconInactive,
+                fontFamily: tab === t ? FontFamily.bodyBold : FontFamily.body,
+                fontSize: FontSize.md,
               }}>
                 {t.charAt(0).toUpperCase() + t.slice(1)}
               </Text>
@@ -419,7 +390,12 @@ export default function HistoryScreen() {
                   ← Swipe left to delete
                 </Text>
                 {periodSessions.map((session) => (
-                  <SwipeableSessionCard key={session.id} session={session} onDelete={handleDelete} />
+                  <SwipeableSessionCard
+                    key={session.id}
+                    session={session}
+                    color={colorForSession(session)}
+                    onDelete={handleDelete}
+                  />
                 ))}
               </>
             )}
@@ -471,7 +447,7 @@ export default function HistoryScreen() {
                         onPress={() => setSelectedStrengthEx(id)}
                         style={[styles.exercisePill, isActive && styles.exercisePillActive]}
                       >
-                        <Text style={{ color: isActive ? '#000' : Colors.textPrimary, fontSize: FontSize.sm, fontWeight: isActive ? FontWeight.bold : FontWeight.medium }}>
+                        <Text style={{ color: isActive ? '#000' : Colors.textPrimary, fontSize: FontSize.sm, fontFamily: isActive ? FontFamily.bodyBold : FontFamily.bodyMedium }}>
                           {name}
                         </Text>
                       </TouchableOpacity>
@@ -502,20 +478,45 @@ export default function HistoryScreen() {
         {/* Awards tab */}
         {tab === 'awards' && (
           <View style={styles.awardsGrid}>
-            {unlockedAwards.map((award) => (
-              <View key={award.id} style={[styles.awardCard, !award.unlocked && styles.awardLocked]}>
-                <Text style={[styles.awardEmoji, !award.unlocked && { opacity: 0.3 }]}>{award.emoji}</Text>
-                <Text semibold style={[styles.awardTitle, { color: award.unlocked ? Colors.textPrimary : Colors.textDisabled }]}>
-                  {award.title}
-                </Text>
-                <Text style={[styles.awardDesc, { color: award.unlocked ? Colors.textSecondary : Colors.textDisabled }]}>
-                  {award.desc}
-                </Text>
-                {!award.unlocked && (
-                  <Ionicons name="lock-closed" size={14} color={Colors.textDisabled} style={{ marginTop: Spacing.xs }} />
-                )}
-              </View>
-            ))}
+            {unlockedAwards.map((award) => {
+              const glowColor = award.id === 'first' ? Colors.iconPremiumGold
+                : award.id === 'streak3' ? Colors.iconActive
+                : null;
+              return (
+                <View
+                  key={award.id}
+                  style={[
+                    styles.awardCard,
+                    !award.unlocked && styles.awardLocked,
+                    award.unlocked && glowColor && {
+                      borderColor: `${glowColor}4D`,
+                      shadowColor: glowColor,
+                      shadowOffset: { width: 0, height: 0 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 14,
+                      elevation: 4,
+                    },
+                  ]}
+                >
+                  {award.id === 'first' ? (
+                    <SvgXml xml={AWARD_SVG} width={36} height={36} style={{ marginBottom: Spacing.sm, opacity: award.unlocked ? 1 : 0.3 }} />
+                  ) : award.id === 'streak3' ? (
+                    <SvgXml xml={STREAK_SVG} width={36} height={36} style={{ marginBottom: Spacing.sm, opacity: award.unlocked ? 1 : 0.3 }} />
+                  ) : (
+                    <Text style={[styles.awardEmoji, !award.unlocked && { opacity: 0.3 }]}>{award.emoji}</Text>
+                  )}
+                  <Text semibold style={[styles.awardTitle, { color: award.unlocked ? Colors.textPrimary : Colors.iconInactive }]}>
+                    {award.title}
+                  </Text>
+                  <Text style={[styles.awardDesc, { color: award.unlocked ? Colors.iconInactive : Colors.textDisabled }]}>
+                    {award.desc}
+                  </Text>
+                  {!award.unlocked && (
+                    <Ionicons name="lock-closed" size={14} color={Colors.iconInactive} style={{ marginTop: Spacing.xs }} />
+                  )}
+                </View>
+              );
+            })}
           </View>
         )}
       </ScrollView>
@@ -539,38 +540,67 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: Spacing.md,
   },
+  historyTitle: {
+    fontSize: 34,
+    fontFamily: FontFamily.display,
+    color: Colors.textPrimary,
+    letterSpacing: -0.5,
+  },
   headerActions: { flexDirection: 'row', gap: Spacing.sm },
   headerBtn: {
-    width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.bgCard,
+    width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.iconPanel,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: Colors.border,
+    borderWidth: 1, borderColor: 'rgba(150,151,190,0.2)',
   },
   periodSelector: {
-    flexDirection: 'row', marginHorizontal: Spacing.lg, backgroundColor: Colors.bgCard,
-    borderRadius: Radius.md, padding: 3, marginBottom: Spacing.md,
-    borderWidth: 1, borderColor: Colors.border,
+    flexDirection: 'row', marginHorizontal: Spacing.lg, backgroundColor: Colors.iconPanel,
+    borderRadius: Radius.md, padding: 4, marginBottom: Spacing.md,
+    borderWidth: 1, borderColor: 'rgba(150,151,190,0.2)',
   },
-  periodBtn: { flex: 1, paddingVertical: Spacing.sm, borderRadius: Radius.sm, alignItems: 'center' },
-  periodBtnActive: { backgroundColor: Colors.accent },
-  periodLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
+  periodBtn: { flex: 1, paddingVertical: Spacing.md, borderRadius: Radius.sm, alignItems: 'center' },
+  periodBtnActive: { backgroundColor: Colors.iconActive },
+  periodLabel: { fontSize: FontSize.md, fontFamily: FontFamily.bodyBold },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing['6xl'] },
-  overviewCard: { marginBottom: Spacing.md },
+  overviewCard: {
+    marginBottom: Spacing.md,
+    borderRadius: Radius.xl,
+    padding: Spacing.xl,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(0,245,160,0.3)',
+    shadowColor: Colors.iconActive,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 6,
+  },
   overviewTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xl, marginBottom: Spacing.md },
   overviewStats: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' },
   overviewStat: { alignItems: 'center' },
+  overviewStatNumber: {
+    fontFamily: FontFamily.bodyBold,
+    fontSize: 22,
+    color: Colors.iconActive,
+  },
   overviewDivider: { width: 1, height: 36, backgroundColor: Colors.border },
   weekBar: { flexDirection: 'row', justifyContent: 'space-around' },
   weekDay: { alignItems: 'center', gap: 4 },
-  weekDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.bgCard2, borderWidth: 1, borderColor: Colors.border },
-  weekDotActive: { backgroundColor: Colors.accent, borderColor: Colors.accent, ...Shadow.accentGlow },
-  chartCard: { marginBottom: Spacing.md },
+  weekDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: 'rgba(255,255,255,0.08)' },
+  weekDotActive: {
+    backgroundColor: Colors.iconActive,
+    shadowColor: Colors.iconActive,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 8,
+    elevation: 4,
+  },
   tabRow: {
-    flexDirection: 'row', backgroundColor: Colors.bgCard, borderRadius: Radius.md,
-    padding: 3, marginBottom: Spacing.md, borderWidth: 1, borderColor: Colors.border,
+    flexDirection: 'row', backgroundColor: Colors.iconPanel, borderRadius: Radius.md,
+    padding: 3, marginBottom: Spacing.md, borderWidth: 1, borderColor: 'rgba(150,151,190,0.2)',
   },
   tabBtn: { flex: 1, paddingVertical: Spacing.sm, borderRadius: Radius.sm, alignItems: 'center' },
-  tabBtnActive: { backgroundColor: Colors.bgCard2 },
+  tabBtnActive: { backgroundColor: 'rgba(255,255,255,0.06)' },
 
   // Swipeable card
   swipeContainer: { marginBottom: Spacing.sm, borderRadius: Radius.lg, overflow: 'hidden' },
@@ -580,13 +610,19 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
   },
   sessionCard: {
-    flexDirection: 'row', backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border,
+    flexDirection: 'row', alignItems: 'stretch', backgroundColor: Colors.iconPanel,
+    borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden',
+  },
+  sessionColorBar: {
+    width: 4,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 10,
+    elevation: 6,
   },
   sessionLeft: {
-    padding: Spacing.md, backgroundColor: Colors.bgCard2,
-    alignItems: 'center', justifyContent: 'center', minWidth: 64,
-    borderTopLeftRadius: Radius.lg, borderBottomLeftRadius: Radius.lg,
+    padding: Spacing.md,
+    alignItems: 'center', justifyContent: 'center', minWidth: 60,
   },
   sessionDateBox: { alignItems: 'center' },
   sessionRight: { flex: 1, padding: Spacing.md },
@@ -601,12 +637,12 @@ const styles = StyleSheet.create({
   awardsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md },
   awardCard: {
     flex: 1, minWidth: (SCREEN_W - Spacing.lg * 2 - Spacing.md) / 2,
-    backgroundColor: Colors.bgCard, borderRadius: Radius.lg, padding: Spacing.lg,
-    borderWidth: 1, borderColor: Colors.border, alignItems: 'center',
+    backgroundColor: Colors.iconPanel, borderRadius: Radius.lg, padding: Spacing.lg,
+    borderWidth: 1, borderColor: 'rgba(150,151,190,0.15)', alignItems: 'center',
   },
-  awardLocked: { borderColor: Colors.bgCard3 },
+  awardLocked: { opacity: 0.45 },
   awardEmoji: { fontSize: 36, marginBottom: Spacing.sm },
-  awardTitle: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, textAlign: 'center', marginBottom: 4 },
+  awardTitle: { fontSize: FontSize.sm, fontFamily: FontFamily.bodyBold, textAlign: 'center', marginBottom: 4 },
   awardDesc: { fontSize: FontSize.xs, textAlign: 'center', lineHeight: 16 },
 
   // Toast

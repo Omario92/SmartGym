@@ -25,7 +25,7 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { ExerciseImage } from '@/components/exercise/ExerciseImage';
 import { CustomExerciseManager } from '@/components/exercise/CustomExerciseManager';
-import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/lib/theme';
+import { Colors, Spacing, Radius, FontSize, FontFamily, Shadow } from '@/lib/theme';
 import {
   useStore,
   selectRoutines,
@@ -102,7 +102,7 @@ function ExercisePicker({
                 <Text
                   style={{
                     fontSize: FontSize.sm,
-                    fontWeight: tab === id ? FontWeight.bold : FontWeight.regular,
+                    fontFamily: tab === id ? FontFamily.bodyBold : FontFamily.body,
                     color: tab === id ? Colors.accent : Colors.textSecondary,
                   }}
                 >
@@ -176,7 +176,7 @@ function ExercisePicker({
             {/* Floating create custom FAB */}
             <TouchableOpacity style={styles.pickerFab} onPress={handleNavigateCreate}>
               <Ionicons name="add" size={18} color="#000" />
-              <Text style={{ color: '#000', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>
+              <Text style={{ color: '#000', fontFamily: FontFamily.bodyBold, fontSize: FontSize.sm }}>
                 Create Custom Exercise
               </Text>
             </TouchableOpacity>
@@ -713,6 +713,6 @@ const styles = StyleSheet.create({
   customBadgeText: {
     color: Colors.accent,
     fontSize: FontSize.xs,
-    fontWeight: FontWeight.semibold,
+    fontFamily: FontFamily.bodyBold,
   },
 });

@@ -14,7 +14,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { Colors, Radius, Spacing } from '@/lib/theme';
+import { Colors, Radius, Spacing, FontFamily } from '@/lib/theme';
 
 export const TAB_BAR_HEIGHT = 64;
 
@@ -109,7 +109,7 @@ export default function TabLayout() {
         },
         tabBarLabelStyle: {
           fontSize: 10,
-          fontWeight: '600',
+          fontFamily: FontFamily.bodyBold,
           marginTop: 2,
         },
         tabBarShowLabel: true,

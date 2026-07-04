@@ -70,6 +70,11 @@ Always import from `lib/theme.ts`. Never hardcode hex values.
 
 ## Recent changes
 ```
+- [v5.6] Auth Flow & Premium UI Enhancements:
+  - Added new Forgot Password screen (`app/auth/forgot-password.tsx`) with Supabase email reset password logic.
+  - Premium redesign of Login, Register and Forgot Password screens with nested gradient borders, custom SVGs, and gold branding accents (#FFD36A).
+  - Modernized Routines, Explore, History, Measures, and More tab layouts with Space Grotesk display font and GlowOrb neon glow backdrops.
+  - Integrated `@expo-google-fonts/space-grotesk` for improved typography across screens.
 - [v5.5] Database Seed & Fallback Alignment:
   - Created automatic PostgreSQL SQL seed script for `catalog_exercises` mapping real Unsplash images and stable UUIDs.
   - Saved SQL seed script to `supabase/seed_catalog.sql` for easy manual execution on Supabase SQL Editor.
@@ -113,3 +118,33 @@ Always import from `lib/theme.ts`. Never hardcode hex values.
   - Fixed crash when starting a featured program from the Explore tab.
   - Fixed invalid VideoView props and database index errors.
 ```
+
+
+## vexp <!-- vexp v2.1.0 -->
+
+**MANDATORY: use `run_pipeline` - do NOT grep or glob the codebase.**
+vexp returns pre-indexed, graph-ranked context in a single call.
+
+### Workflow
+1. `run_pipeline` with your task description - ALWAYS FIRST (replaces all other tools)
+2. Make targeted changes based on the context returned
+3. `run_pipeline` again only if you need more context
+
+### Available MCP tools
+- `run_pipeline` - **PRIMARY TOOL**. Runs capsule + impact + memory in 1 call.
+  Auto-detects intent. Includes file content. Example: `run_pipeline({ "task": "fix auth bug" })`
+- `get_skeleton` - compact file structure
+- `index_status` - indexing status
+- `expand_vexp_ref` - expand V-REF placeholders in v2 output
+
+### Agentic search
+- Do NOT use built-in file search, grep, or codebase indexing - always call `run_pipeline` first
+- If you spawn sub-agents or background tasks, pass them the context from `run_pipeline`
+  rather than letting them search the codebase independently
+
+### Smart Features
+Intent auto-detection, hybrid ranking, session memory, auto-expanding budget.
+
+### Multi-Repo
+`run_pipeline` auto-queries all indexed repos. Use `repos: ["alias"]` to scope. Run `index_status` to see aliases.
+<!-- /vexp -->

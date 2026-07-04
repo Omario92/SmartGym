@@ -21,7 +21,7 @@ import Reanimated, { useAnimatedStyle, withTiming, withSpring } from 'react-nati
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, Redirect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/lib/theme';
+import { Colors, Spacing, Radius, FontSize, FontFamily, Shadow } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -128,7 +128,7 @@ const SetRow: React.FC<{
         {set.completed ? (
           <Ionicons name="checkmark-circle" size={20} color={Colors.accent} />
         ) : (
-          <Text color="muted" style={{ fontWeight: FontWeight.semibold }}>
+          <Text color="muted" style={{ fontFamily: FontFamily.bodyBold }}>
             {setIndex + 1}
           </Text>
         )}
@@ -446,7 +446,7 @@ export default function ActiveWorkoutScreen() {
                         style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bgCard2, paddingHorizontal: 8, paddingVertical: 4, borderRadius: Radius.sm, borderWidth: 1, borderColor: Colors.border }}
                       >
                         <Ionicons name="timer-outline" size={14} color={Colors.textSecondary} />
-                        <Text color="secondary" style={{ fontSize: FontSize.xs, marginLeft: 4, fontWeight: FontWeight.medium }}>
+                        <Text color="secondary" style={{ fontSize: FontSize.xs, marginLeft: 4, fontFamily: FontFamily.bodyMedium }}>
                           {exercise.restSeconds ?? settings.restTimerDefault}s
                         </Text>
                       </TouchableOpacity>
@@ -600,7 +600,7 @@ const styles = StyleSheet.create({
   customBadgeText: {
     color: Colors.accent,
     fontSize: FontSize.xs,
-    fontWeight: FontWeight.semibold,
+    fontFamily: FontFamily.bodyBold,
   },
   exerciseHeader: {
     flexDirection: 'row',
@@ -643,7 +643,7 @@ const styles = StyleSheet.create({
   prBadgeText: {
     color: '#000',
     fontSize: FontSize.xs,
-    fontWeight: FontWeight.bold,
+    fontFamily: FontFamily.bodyBold,
   },
   setLabels: {
     flexDirection: 'row',
@@ -695,7 +695,7 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
     textAlign: 'center',
     minHeight: 40,
-    fontWeight: FontWeight.semibold,
+    fontFamily: FontFamily.bodyBold,
   },
   setInputDone: {
     backgroundColor: Colors.accentGlow2,

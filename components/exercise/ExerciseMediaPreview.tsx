@@ -5,8 +5,10 @@
 import { Image } from 'expo-image';
 import { View, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { SvgXml } from 'react-native-svg';
 import { Colors, Spacing, Radius, FontSize } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
+import { EMPTY_STATE_SVG } from '@/components/ui/designIcons';
 import type { MediaItem } from '@/lib/supabaseTypes';
 import { deleteMedia } from '@/lib/mediaUploadService';
 
@@ -123,23 +125,42 @@ const styles = StyleSheet.create({
 export function NoMediaPlaceholder() {
   return (
     <View style={placeholder.wrap}>
-      <Ionicons name="image-outline" size={32} color={Colors.textMuted} />
-      <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 6 }}>
-        No media yet
+      <SvgXml xml={EMPTY_STATE_SVG} width={44} height={44} style={{ marginBottom: Spacing.sm }} />
+      <Text style={{ fontSize: FontSize.sm, color: Colors.textSecondary, textAlign: 'center' }}>
+        Add photos or video for this exercise
       </Text>
+      <View style={placeholder.pill}>
+        <Ionicons name="camera-outline" size={16} color={Colors.accent} />
+        <Text style={{ fontSize: FontSize.xs, color: Colors.accent, fontWeight: '600', marginLeft: 6 }}>
+          Add Media
+        </Text>
+      </View>
     </View>
   );
 }
 
 const placeholder = StyleSheet.create({
   wrap: {
-    height: 80,
-    borderRadius: Radius.md,
-    borderWidth: 1,
+    borderRadius: Radius.lg,
+    borderWidth: 2,
     borderColor: Colors.border,
     borderStyle: 'dashed',
+    backgroundColor: Colors.bgCard,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: Spacing.xxl,
+    paddingHorizontal: Spacing.lg,
     marginBottom: Spacing.md,
+  },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.bgCard2,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
 });

@@ -16,13 +16,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Polyline, Line, Circle } from 'react-native-svg';
-import Reanimated, { useAnimatedStyle, withTiming, useSharedValue } from 'react-native-reanimated';
-import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/lib/theme';
+import Svg, { Polyline, Line, Circle, SvgXml } from 'react-native-svg';
+import { LinearGradient } from 'expo-linear-gradient';
+import Reanimated, { useAnimatedStyle, withTiming, useSharedValue, FadeIn, FadeInDown } from 'react-native-reanimated';
+import { Colors, Spacing, Radius, FontSize, Shadow } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { EmptyState } from '@/components/ui/EmptyState';
+import { EMPTY_STATE_SVG } from '@/components/ui/designIcons';
 import { useStore } from '@/store';
 import type { BodyMeasure } from '@/store';
 import { Dimensions } from 'react-native';
@@ -304,12 +305,26 @@ export default function MeasuresScreen() {
       >
         {!hasData ? (
           <>
-            <EmptyState
-              icon="📏"
-              title="No Measurements Yet"
-              subtitle="Start tracking your body measurements to monitor your transformation over time."
-              action={{ label: '+ Add Measurements', onPress: () => setShowModal(true) }}
-            />
+            <Reanimated.View entering={FadeIn.duration(400)} style={styles.emptyState}>
+              <Reanimated.View entering={FadeInDown.duration(400).delay(50)} style={styles.emptyIconBadge}>
+                <LinearGradient
+                  colors={['rgba(0,245,160,0.12)', 'rgba(139,92,255,0.10)']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+                <SvgXml xml={EMPTY_STATE_SVG} width={56} height={56} />
+              </Reanimated.View>
+              <Text variant="h4" center style={styles.emptyTitle}>No Measurements Yet</Text>
+              <Text color="secondary" center style={styles.emptySubtitle}>
+                Start tracking your body measurements to monitor your transformation over time.
+              </Text>
+              <Button
+                title="+ Add Measurements"
+                variant="outline"
+                onPress={() => setShowModal(true)}
+              />
+            </Reanimated.View>
 
             {/* Info card */}
             <Card style={styles.infoCard}>
@@ -317,7 +332,7 @@ export default function MeasuresScreen() {
                 📊 Why Track Measurements?
               </Text>
               <Text color="secondary" style={{ lineHeight: 20, marginBottom: Spacing.md }}>
-                The scale doesn't tell the whole story. Body measurements give you a complete picture of your body composition changes.
+                The scale doesn&apos;t tell the whole story. Body measurements give you a complete picture of your body composition changes.
               </Text>
               {[
                 '⚖️ Weight progress over time',
@@ -428,6 +443,29 @@ export default function MeasuresScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
+  emptyState: {
+    alignItems: 'center',
+    paddingHorizontal: Spacing.xxl,
+    paddingVertical: Spacing['4xl'],
+  },
+  emptyIconBadge: {
+    width: 96,
+    height: 96,
+    borderRadius: Radius.xxl + 4,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(0,245,160,0.3)',
+    shadowColor: Colors.iconActive,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    elevation: 6,
+  },
+  emptyTitle: { marginBottom: Spacing.sm },
+  emptySubtitle: { lineHeight: 22, maxWidth: 280, marginBottom: Spacing.xl },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

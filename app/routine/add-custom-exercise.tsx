@@ -31,7 +31,7 @@ import Animated, {
   withTiming,
   FadeIn,
 } from 'react-native-reanimated';
-import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/lib/theme';
+import { Colors, Spacing, Radius, FontSize, FontFamily, Shadow } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { Button } from '@/components/ui/Button';
 import { ExerciseImage } from '@/components/exercise/ExerciseImage';
@@ -99,7 +99,7 @@ const SectionCard: React.FC<{
       <Text
         style={{
           fontSize: FontSize.xs,
-          fontWeight: FontWeight.bold,
+          fontFamily: FontFamily.bodyBold,
           letterSpacing: 1.2,
           color: glowing ? Colors.accent : Colors.textMuted,
           marginBottom: Spacing.md,
@@ -294,7 +294,7 @@ const LivePreviewCard: React.FC<{
           fontSize: FontSize.xs,
           letterSpacing: 1.5,
           color: Colors.accent,
-          fontWeight: FontWeight.bold,
+          fontFamily: FontFamily.bodyBold,
           marginBottom: Spacing.md,
           textTransform: 'uppercase',
         }}
@@ -333,7 +333,7 @@ const LivePreviewCard: React.FC<{
                 style={{
                   color: diffColor[difficulty] || Colors.info,
                   fontSize: FontSize.xs,
-                  fontWeight: FontWeight.semibold,
+                  fontFamily: FontFamily.bodyBold,
                   textTransform: 'capitalize',
                 }}
               >
@@ -623,7 +623,7 @@ export default function AddCustomExerciseScreen() {
                         style={{
                           fontSize: FontSize.sm,
                           color: value === m.id ? '#000' : Colors.textSecondary,
-                          fontWeight: value === m.id ? FontWeight.bold : FontWeight.regular,
+                          fontFamily: value === m.id ? FontFamily.bodyBold : FontFamily.body,
                         }}
                       >
                         {m.icon} {m.label}
@@ -652,7 +652,7 @@ export default function AddCustomExerciseScreen() {
                     style={{
                       fontSize: FontSize.sm,
                       color: active ? Colors.accent : Colors.textSecondary,
-                      fontWeight: active ? FontWeight.semibold : FontWeight.regular,
+                      fontFamily: active ? FontFamily.bodyBold : FontFamily.body,
                     }}
                   >
                     {m.icon} {m.label}
@@ -682,7 +682,7 @@ export default function AddCustomExerciseScreen() {
                       style={{
                         fontSize: FontSize.sm,
                         color: value === eq ? '#000' : Colors.textSecondary,
-                        fontWeight: value === eq ? FontWeight.bold : FontWeight.regular,
+                        fontFamily: value === eq ? FontFamily.bodyBold : FontFamily.body,
                       }}
                     >
                       {EQUIPMENT_LABELS[eq]}
@@ -741,7 +741,7 @@ export default function AddCustomExerciseScreen() {
                       style={{
                         fontSize: FontSize.sm,
                         color: value === d ? '#fff' : Colors.textSecondary,
-                        fontWeight: value === d ? FontWeight.bold : FontWeight.regular,
+                        fontFamily: value === d ? FontFamily.bodyBold : FontFamily.body,
                         textTransform: 'capitalize',
                       }}
                     >
@@ -820,7 +820,7 @@ export default function AddCustomExerciseScreen() {
           {instructionFields.map((field, i) => (
             <View key={field.id} style={styles.instructionRow}>
               <View style={styles.stepBadge}>
-                <Text color="accent" style={{ fontWeight: FontWeight.bold, fontSize: FontSize.xs }}>
+                <Text color="accent" style={{ fontFamily: FontFamily.bodyBold, fontSize: FontSize.xs }}>
                   {i + 1}
                 </Text>
               </View>
@@ -899,7 +899,7 @@ export default function AddCustomExerciseScreen() {
         <View style={styles.aiHint}>
           <Ionicons name="bulb-outline" size={16} color={Colors.warning} />
           <Text color="muted" style={{ fontSize: FontSize.xs, flex: 1, marginLeft: Spacing.sm, lineHeight: 16 }}>
-            <Text style={{ color: Colors.warning, fontWeight: FontWeight.semibold }}>Tip: </Text>
+            <Text style={{ color: Colors.warning, fontFamily: FontFamily.bodyBold }}>Tip: </Text>
             Need inspiration? Popular custom exercises include Bulgarian Split Squat, Landmine Press, Tempo Push-Ups, and Pallof Press.
           </Text>
         </View>
@@ -1082,7 +1082,7 @@ const styles = StyleSheet.create({
   },
   applyBtnText: {
     color: Colors.accent,
-    fontWeight: FontWeight.semibold,
+    fontFamily: FontFamily.bodyBold,
     fontSize: FontSize.sm,
   },
   imagePlaceholder: {
