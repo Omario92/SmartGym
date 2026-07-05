@@ -12,18 +12,29 @@ import {
   TouchableOpacity,
   TextInput,
   Pressable,
+  Modal,
   Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { router } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SvgXml } from 'react-native-svg';
-import Animated, { FadeInDown, FadeIn, ZoomIn as ZoomInFab } from 'react-native-reanimated';
-import { Colors, Spacing, Radius, FontSize, FontFamily, Shadow, Glass } from '@/lib/theme';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  runOnJS,
+} from 'react-native-reanimated';
+import { Colors, Spacing, Radius, FontSize, FontFamily, Shadow, Gradients } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { FadeInView } from '@/components/ui/FadeInView';
+import { SectionHeader } from '@/components/ui/SectionHeader';
 import { GlassSurface } from '@/components/ui/GlassSurface';
 import { GlowOrb } from '@/components/ui/GlowOrb';
 import { AI_COACH_SVG, STREAK_SVG } from '@/components/ui/designIcons';
@@ -33,15 +44,62 @@ import { useStore } from '@/store';
 import type { Routine } from '@/store';
 
 const WEEK_DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-const STREAK_DAYS = 3;
+
+/** Local YYYY-MM-DD key for a date */
+const dayKey = (d: Date) =>
+  `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+
+/** Monday-first index (0 = Mon … 6 = Sun) */
+const mondayIndex = (d: Date) => (d.getDay() + 6) % 7;
+
+/**
+ * Derive real weekly activity + current streak from workout history, so the
+ * Coach card reflects actual data instead of hardcoded placeholders.
+ */
+function computeActivity(sessionDates: string[]): {
+  streak: number;
+  weekActive: boolean[];
+  todayIndex: number;
+} {
+  const days = new Set(sessionDates.map((iso) => dayKey(new Date(iso))));
+  const today = new Date();
+
+  // Streak: consecutive days worked out ending today or yesterday.
+  let streak = 0;
+  const cursor = new Date(today);
+  if (!days.has(dayKey(cursor))) cursor.setDate(cursor.getDate() - 1); // allow "yesterday"
+  while (days.has(dayKey(cursor))) {
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  // This week's activity (Monday → Sunday)
+  const weekActive = Array<boolean>(7).fill(false);
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - mondayIndex(today));
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    weekActive[i] = days.has(dayKey(d));
+  }
+
+  return { streak, weekActive, todayIndex: mondayIndex(today) };
+}
 
 // ─── Routine Card ─────────────────────────────────────────────────────────────
 
-const RoutineCard: React.FC<{ routine: Routine; onPress: () => void; onMore: () => void }> = ({
-  routine,
-  onPress,
-  onMore,
-}) => {
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
+
+const ACTIONS_WIDTH = 208;
+
+/** The visual card — reused in the list and in the long-press preview. */
+const RoutineCardBody: React.FC<{
+  routine: Routine;
+  onStart?: () => void;
+  onPressBody?: () => void;
+  onLongPress?: () => void;
+  preview?: boolean;
+}> = ({ routine, onStart, onPressBody, onLongPress, preview }) => {
   const accentColor = routine.color || Colors.accent;
   const muscleIcon = muscleIconForRoutine(routine);
 
@@ -51,7 +109,13 @@ const RoutineCard: React.FC<{ routine: Routine; onPress: () => void; onMore: () 
         <Image source={muscleIcon} style={styles.routineIconImg} resizeMode="contain" />
       </View>
 
-      <Pressable style={styles.routineContent} onPress={onMore} onLongPress={onMore}>
+      <Pressable
+        style={styles.routineContent}
+        onPress={onPressBody}
+        onLongPress={onLongPress}
+        delayLongPress={280}
+        disabled={preview}
+      >
         <Text style={styles.routineName} numberOfLines={1}>
           {routine.name}
         </Text>
@@ -68,10 +132,194 @@ const RoutineCard: React.FC<{ routine: Routine; onPress: () => void; onMore: () 
         </View>
       </Pressable>
 
-      <Pressable style={styles.goBtn} onPress={onPress} hitSlop={8}>
+      <Pressable style={styles.goBtn} onPress={onStart} hitSlop={8} disabled={preview}>
         <Image source={require('@/assets/icons/go-icon.png')} style={styles.goIcon} />
       </Pressable>
     </View>
+  );
+};
+
+/** A single circular quick-action revealed by swiping. */
+const SwipeAction: React.FC<{
+  icon: IconName;
+  label: string;
+  bg: string;
+  color: string;
+  onPress: () => void;
+}> = ({ icon, label, bg, color, onPress }) => (
+  <TouchableOpacity style={styles.swipeAction} onPress={onPress} activeOpacity={0.8}>
+    <View style={[styles.swipeActionCircle, { backgroundColor: bg }]}>
+      <Ionicons name={icon} size={20} color={color} />
+    </View>
+    <Text style={styles.swipeActionLabel}>{label}</Text>
+  </TouchableOpacity>
+);
+
+/** Routine row: swipe left to reveal More / Archive / Remove; long-press for the menu. */
+const SwipeableRoutineCard: React.FC<{
+  routine: Routine;
+  isOpen: boolean;
+  onRequestOpen: () => void;
+  onRequestClose: () => void;
+  onStart: () => void;
+  onLongPress: () => void;
+  onMore: () => void;
+  onArchive: () => void;
+  onRemove: () => void;
+}> = ({ routine, isOpen, onRequestOpen, onRequestClose, onStart, onLongPress, onMore, onArchive, onRemove }) => {
+  const tx = useSharedValue(0);
+  const startX = useSharedValue(0);
+
+  React.useEffect(() => {
+    tx.value = withSpring(isOpen ? -ACTIONS_WIDTH : 0, { damping: 18, stiffness: 220 });
+  }, [isOpen]);
+
+  const pan = Gesture.Pan()
+    .activeOffsetX([-14, 14])
+    .failOffsetY([-12, 12])
+    .onBegin(() => {
+      startX.value = tx.value;
+    })
+    .onUpdate((e) => {
+      tx.value = Math.min(0, Math.max(-ACTIONS_WIDTH, startX.value + e.translationX));
+    })
+    .onEnd(() => {
+      if (tx.value < -ACTIONS_WIDTH / 2) {
+        tx.value = withSpring(-ACTIONS_WIDTH, { damping: 18, stiffness: 220 });
+        runOnJS(onRequestOpen)();
+      } else {
+        tx.value = withSpring(0, { damping: 18, stiffness: 220 });
+        runOnJS(onRequestClose)();
+      }
+    });
+
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ translateX: tx.value }] }));
+
+  return (
+    <View style={styles.swipeWrap}>
+      <View style={styles.swipeActionRow}>
+        <SwipeAction icon="ellipsis-horizontal" label="More" bg={Colors.surfaceHigh} color={Colors.textPrimary} onPress={onMore} />
+        <SwipeAction icon="archive" label="Archive" bg={Colors.info} color={Colors.textOnDark} onPress={onArchive} />
+        <SwipeAction icon="trash" label="Remove" bg={Colors.error} color={Colors.textOnDark} onPress={onRemove} />
+      </View>
+
+      <GestureDetector gesture={pan}>
+        <Animated.View style={animStyle}>
+          <RoutineCardBody
+            routine={routine}
+            onStart={() => (isOpen ? onRequestClose() : onStart())}
+            onPressBody={() => (isOpen ? onRequestClose() : onLongPress())}
+            onLongPress={onLongPress}
+          />
+        </Animated.View>
+      </GestureDetector>
+    </View>
+  );
+};
+
+// ─── Long-press context menu ───────────────────────────────────────────────────
+
+const MenuRow: React.FC<{
+  icon: IconName;
+  label: string;
+  destructive?: boolean;
+  onPress: () => void;
+}> = ({ icon, label, destructive, onPress }) => (
+  <TouchableOpacity style={styles.menuRow} onPress={onPress} activeOpacity={0.7}>
+    <Ionicons name={icon} size={20} color={destructive ? Colors.error : Colors.textPrimary} />
+    <Text style={[styles.menuLabel, destructive && { color: Colors.error }]}>{label}</Text>
+  </TouchableOpacity>
+);
+
+const RoutineContextMenu: React.FC<{
+  routine: Routine | null;
+  haptics?: boolean;
+  onClose: () => void;
+  onStart: () => void;
+  onEdit: () => void;
+  onDuplicate: () => void;
+  onArchive: () => void;
+  onDelete: () => void;
+}> = ({ routine, haptics, onClose, onStart, onEdit, onDuplicate, onArchive, onDelete }) => {
+  const scale = useSharedValue(0.94);
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(14);
+
+  React.useEffect(() => {
+    if (routine) {
+      // Snappy iOS-style "lift + settle" as the menu takes over.
+      scale.value = withSpring(1, { damping: 16, stiffness: 240, mass: 0.6 });
+      translateY.value = withSpring(0, { damping: 16, stiffness: 240, mass: 0.6 });
+      opacity.value = withTiming(1, { duration: 130 });
+    } else {
+      scale.value = 0.94;
+      translateY.value = 14;
+      opacity.value = 0;
+    }
+  }, [routine]);
+
+  const contentStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translateY.value }, { scale: scale.value }],
+  }));
+
+  const run = (fn: () => void) => {
+    if (haptics) {
+      Haptics.selectionAsync().catch(() => {});
+    }
+    onClose();
+    fn();
+  };
+
+  return (
+    <Modal visible={!!routine} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.menuOverlay} onPress={onClose}>
+        {routine ? (
+          <Animated.View style={[styles.menuContent, contentStyle]}>
+            <View style={styles.menuPreview} pointerEvents="none">
+              <RoutineCardBody routine={routine} preview />
+            </View>
+
+            {routine.exercises.length > 0 ? (
+              <View style={styles.previewExercises} pointerEvents="none">
+                <Text style={styles.previewExTitle}>
+                  {routine.exercises.length} EXERCISE{routine.exercises.length > 1 ? 'S' : ''}
+                </Text>
+                {routine.exercises.slice(0, 5).map((ex, i) => (
+                  <View key={`${ex.exerciseId}-${i}`} style={styles.previewExRow}>
+                    <View style={styles.previewExDot} />
+                    <Text style={styles.previewExName} numberOfLines={1}>
+                      {ex.exerciseName}
+                    </Text>
+                    <Text style={styles.previewExMeta}>
+                      {ex.sets} × {ex.reps ?? '—'}
+                      {ex.weight ? ` · ${ex.weight}kg` : ''}
+                    </Text>
+                  </View>
+                ))}
+                {routine.exercises.length > 5 && (
+                  <Text style={styles.previewExMore}>
+                    +{routine.exercises.length - 5} more
+                  </Text>
+                )}
+              </View>
+            ) : null}
+
+            <View style={styles.menuList}>
+              <MenuRow icon="play" label="Start Workout" onPress={() => run(onStart)} />
+              <View style={styles.menuDivider} />
+              <MenuRow icon="create-outline" label="Edit" onPress={() => run(onEdit)} />
+              <View style={styles.menuDivider} />
+              <MenuRow icon="copy-outline" label="Duplicate" onPress={() => run(onDuplicate)} />
+              <View style={styles.menuDivider} />
+              <MenuRow icon="archive-outline" label="Archive" onPress={() => run(onArchive)} />
+              <View style={styles.menuDivider} />
+              <MenuRow icon="trash-outline" label="Delete" destructive onPress={() => run(onDelete)} />
+            </View>
+          </Animated.View>
+        ) : null}
+      </Pressable>
+    </Modal>
   );
 };
 
@@ -81,8 +329,18 @@ export default function RoutinesScreen() {
   const rawRoutines = useStore(s => s.routines) || [];
   const deleteRoutine = useStore(s => s.deleteRoutine);
   const duplicateRoutine = useStore(s => s.duplicateRoutine);
+  const archiveRoutine = useStore(s => s.archiveRoutine);
+  const sessions = useStore(s => s.sessions) || [];
+  const hapticsEnabled = useStore(s => s.settings.hapticFeedback);
 
   const [search, setSearch] = useState('');
+  const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
+  const [menuRoutine, setMenuRoutine] = useState<Routine | null>(null);
+
+  const { streak, weekActive } = React.useMemo(
+    () => computeActivity(sessions.map((s) => s.startedAt)),
+    [sessions]
+  );
 
   // Deduplicate routines by ID and content signature to prevent duplicates in UI
   const routines = React.useMemo(() => {
@@ -90,7 +348,7 @@ export default function RoutinesScreen() {
     const seenSignatures = new Set<string>();
 
     rawRoutines.forEach((r) => {
-      if (!r.deletedAt && r.id) {
+      if (!r.deletedAt && !r.archived && r.id) {
         const signature = `${r.name.trim()}_${(r.description || '').trim()}_${r.exercises.length}`;
         if (!map.has(r.id) && !seenSignatures.has(signature)) {
           map.set(r.id, r);
@@ -110,29 +368,33 @@ export default function RoutinesScreen() {
   }, [routines, search]);
 
   const handleStartWorkout = (routine: Routine) => {
+    setOpenSwipeId(null);
     useStore.getState().startWorkout(routine);
     router.push('/workout/active');
   };
 
-  const handleMoreOptions = (routine: Routine) => {
-    Alert.alert(routine.name, 'Choose an action', [
-      { text: 'Edit', onPress: () => router.push(`/routine/${routine.id}`) },
-      { text: 'Duplicate', onPress: () => duplicateRoutine(routine.id) },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () =>
-          Alert.alert('Delete Routine', 'Are you sure?', [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Delete', style: 'destructive', onPress: () => deleteRoutine(routine.id) },
-          ]),
-      },
+  const openMenu = (routine: Routine) => {
+    if (hapticsEnabled) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    }
+    setOpenSwipeId(null);
+    setMenuRoutine(routine);
+  };
+
+  const handleArchive = (routine: Routine) => {
+    setOpenSwipeId(null);
+    archiveRoutine(routine.id);
+  };
+
+  const handleRemove = (routine: Routine) => {
+    setOpenSwipeId(null);
+    Alert.alert('Delete Routine', `Delete "${routine.name}"? This can't be undone.`, [
       { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => deleteRoutine(routine.id) },
     ]);
   };
 
   const insets = useSafeAreaInsets();
-  const fabBottom = insets.bottom + TAB_BAR_HEIGHT + Spacing.lg;
   const scrollBottomPad = insets.bottom + TAB_BAR_HEIGHT + Spacing.xxxl;
 
   return (
@@ -182,9 +444,9 @@ export default function RoutinesScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Coach AI Hero Card */}
-        <Animated.View entering={FadeIn.duration(400)} style={styles.coachCard}>
+        <FadeInView style={styles.coachCard}>
           <LinearGradient
-            colors={['#2A1A4D', '#0E2A3A']}
+            colors={Gradients.coach}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
@@ -198,33 +460,38 @@ export default function RoutinesScreen() {
                 <Text style={styles.coachTitle}>Coach AI</Text>
                 <Badge label="BETA" variant="cyan" />
               </View>
-              <Text style={styles.coachSubtitle}>3-day streak — chest &amp; triceps today</Text>
+              <Text style={styles.coachSubtitle}>
+                {streak > 0
+                  ? `${streak}-day streak — keep the momentum going`
+                  : 'Start a workout to build your streak'}
+              </Text>
             </View>
           </View>
 
           <View style={styles.coachBottomRow}>
-            <Pressable style={styles.coachBtn} onPress={() => {}}>
+            <Pressable style={styles.coachBtn} onPress={() => router.push('/explore')}>
               <LinearGradient
-                colors={[Colors.iconCinematicViolet, Colors.iconEnergyCyan]}
+                colors={Gradients.aiButton}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={StyleSheet.absoluteFill}
               />
-              <Text style={styles.coachBtnText}>View Suggestions</Text>
+              <Text style={styles.coachBtnText}>Build a Plan</Text>
+              <Ionicons name="arrow-forward" size={15} color={Colors.textPrimary} />
             </Pressable>
 
             <View style={styles.streakBox}>
               <SvgXml xml={STREAK_SVG} width={20} height={20} />
-              <Text style={styles.streakValue}>{STREAK_DAYS}</Text>
+              <Text style={styles.streakValue}>{streak}</Text>
             </View>
           </View>
-        </Animated.View>
+        </FadeInView>
 
         {/* Weekly streak strip */}
         <View style={styles.weekStrip}>
           {WEEK_DAYS.map((day, i) => (
             <View key={i} style={styles.weekDayItem}>
-              <View style={[styles.weekDot, i < STREAK_DAYS && styles.weekDotActive]} />
+              <View style={[styles.weekDot, weekActive[i] && styles.weekDotActive]} />
               <Text style={styles.weekDayLabel}>{day}</Text>
             </View>
           ))}
@@ -239,23 +506,28 @@ export default function RoutinesScreen() {
           />
         ) : (
           <>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>MY ROUTINE</Text>
-              <View style={styles.sectionDivider} />
-            </View>
+            <SectionHeader
+              title="My Routine"
+              uppercase
+              divider
+              style={styles.routineSectionHeader}
+            />
 
             {/* Routine List */}
             {filtered.map((routine, i) => (
-              <Animated.View
-                key={routine.id}
-                entering={FadeInDown.duration(350).delay(Math.min(i, 8) * 60)}
-              >
-                <RoutineCard
+              <FadeInView key={routine.id} delay={Math.min(i, 6) * 50}>
+                <SwipeableRoutineCard
                   routine={routine}
-                  onPress={() => handleStartWorkout(routine)}
-                  onMore={() => handleMoreOptions(routine)}
+                  isOpen={openSwipeId === routine.id}
+                  onRequestOpen={() => setOpenSwipeId(routine.id)}
+                  onRequestClose={() => setOpenSwipeId((cur) => (cur === routine.id ? null : cur))}
+                  onStart={() => handleStartWorkout(routine)}
+                  onLongPress={() => openMenu(routine)}
+                  onMore={() => openMenu(routine)}
+                  onArchive={() => handleArchive(routine)}
+                  onRemove={() => handleRemove(routine)}
                 />
-              </Animated.View>
+              </FadeInView>
             ))}
 
             {filtered.length === 0 && search.length > 0 && (
@@ -269,24 +541,17 @@ export default function RoutinesScreen() {
         )}
       </ScrollView>
 
-      {/* FAB — Add Routine, floats above the glass tab bar */}
-      {routines.length > 0 && (
-        <Animated.View
-          entering={ZoomInFab.duration(300)}
-          style={[styles.fab, { bottom: fabBottom }]}
-        >
-          <GlassSurface
-            radius={30}
-            intensity={Glass.intensityPill}
-            accent
-            strong
-            onPress={() => router.push('/routine/create')}
-            style={styles.fabInner}
-          >
-            <Ionicons name="add" size={28} color={Colors.accent} />
-          </GlassSurface>
-        </Animated.View>
-      )}
+      {/* Long-press context menu */}
+      <RoutineContextMenu
+        routine={menuRoutine}
+        haptics={hapticsEnabled}
+        onClose={() => setMenuRoutine(null)}
+        onStart={() => menuRoutine && handleStartWorkout(menuRoutine)}
+        onEdit={() => menuRoutine && router.push(`/routine/${menuRoutine.id}`)}
+        onDuplicate={() => menuRoutine && duplicateRoutine(menuRoutine.id)}
+        onArchive={() => menuRoutine && archiveRoutine(menuRoutine.id)}
+        onDelete={() => menuRoutine && handleRemove(menuRoutine)}
+      />
     </SafeAreaView>
   );
 }
@@ -330,7 +595,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
     backgroundColor: Colors.iconPanel,
     borderWidth: 1,
-    borderColor: 'rgba(150,151,190,0.2)',
+    borderColor: Colors.borderSubtle,
     gap: Spacing.sm,
   },
   searchIcon: {},
@@ -349,11 +614,12 @@ const styles = StyleSheet.create({
   // Coach AI Hero Card
   coachCard: {
     borderRadius: Radius.xxl,
+    borderCurve: 'continuous',
     padding: Spacing.xl,
     marginBottom: Spacing.lg,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(139,92,255,0.35)',
+    borderColor: Colors.borderViolet,
     shadowColor: Colors.iconCinematicViolet,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.25,
@@ -380,7 +646,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontSize: FontSize.sm,
     fontFamily: FontFamily.body,
-    color: '#C8C8E0',
+    color: Colors.textCoach,
   },
   coachBottomRow: {
     flexDirection: 'row',
@@ -388,8 +654,11 @@ const styles = StyleSheet.create({
   },
   coachBtn: {
     flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: Spacing.sm,
+    minHeight: 44,
     paddingVertical: 11,
     borderRadius: Radius.full,
     overflow: 'hidden',
@@ -421,7 +690,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
     backgroundColor: Colors.iconPanel,
     borderWidth: 1,
-    borderColor: 'rgba(150,151,190,0.2)',
+    borderColor: Colors.borderSubtle,
     marginBottom: Spacing.xl,
   },
   weekDayItem: {
@@ -451,30 +720,49 @@ const styles = StyleSheet.create({
     color: Colors.iconInactive,
   },
 
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
+  routineSectionHeader: {
     marginBottom: Spacing.lg,
-  },
-  sectionTitle: {
-    fontSize: FontSize.sm,
-    fontFamily: FontFamily.bodyBold,
-    color: Colors.textSecondary,
-    letterSpacing: 1.2,
-  },
-  sectionDivider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.glassBorder,
   },
 
   // Routine card
+  swipeWrap: {
+    marginBottom: Spacing.md + 2,
+    borderRadius: Radius.xl,
+    borderCurve: 'continuous',
+    overflow: 'hidden',
+  },
+  swipeActionRow: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: Spacing.md,
+    gap: Spacing.sm,
+  },
+  swipeAction: {
+    width: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  swipeActionCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  swipeActionLabel: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.body,
+    color: Colors.iconInactive,
+  },
   routineCard: {
     flexDirection: 'row',
     alignItems: 'stretch',
     minHeight: 132,
-    marginBottom: Spacing.md + 2,
     borderRadius: Radius.xl,
     overflow: 'hidden',
     backgroundColor: Colors.iconPanel,
@@ -535,24 +823,87 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xl,
   },
 
-  // FAB
-  fab: {
-    position: 'absolute',
-    bottom: Spacing.xl,
-    right: Spacing.xl,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    shadowColor: Colors.accent,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.6,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-  fabInner: {
-    width: 60,
-    height: 60,
-    alignItems: 'center',
+  // Long-press context menu
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: Colors.scrimStrong,
     justifyContent: 'center',
+    paddingHorizontal: Spacing.xl,
+  },
+  menuContent: {
+    gap: Spacing.md,
+  },
+  menuPreview: {
+    borderRadius: Radius.xl,
+    ...Shadow.card,
+  },
+  previewExercises: {
+    backgroundColor: Colors.surfaceElevated,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    gap: Spacing.sm,
+  },
+  previewExTitle: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.bodyBold,
+    letterSpacing: 1,
+    color: Colors.textSecondary,
+    marginBottom: 2,
+  },
+  previewExRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  previewExDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.accent,
+  },
+  previewExName: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.bodyMedium,
+    color: Colors.textPrimary,
+  },
+  previewExMeta: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.body,
+    color: Colors.iconInactive,
+  },
+  previewExMore: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.body,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+  menuList: {
+    backgroundColor: Colors.surfaceHigh,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    overflow: 'hidden',
+    ...Shadow.card,
+  },
+  menuRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    minHeight: 52,
+  },
+  menuLabel: {
+    fontSize: FontSize.md,
+    fontFamily: FontFamily.bodyMedium,
+    color: Colors.textPrimary,
+  },
+  menuDivider: {
+    height: 1,
+    backgroundColor: Colors.divider,
+    marginLeft: Spacing.lg + 20 + Spacing.md,
   },
 });

@@ -29,7 +29,7 @@ export const GlowOrb: React.FC<GlowOrbProps> = ({
   size = 180,
   color = 'rgba(0,255,157,0.35)',
   style,
-  opacity = 1,
+  opacity = 0.5,
   falloff = 0.7,
 }) => {
   const gradId = React.useRef(`glowOrb${idCounter++}`).current;

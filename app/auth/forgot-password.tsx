@@ -17,17 +17,19 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import { router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image as ExpoImage } from 'expo-image';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Colors, Spacing, Radius, FontSize, FontFamily } from '@/lib/theme';
+import { Colors, Spacing, Radius, FontSize, FontFamily, Gradients } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { GlowOrb } from '@/components/ui/GlowOrb';
 import { supabase } from '@/lib/supabase';
 
-const GOLD = '#FFD36A';
+const GOLD = Colors.iconPremiumGold;
 
 export default function ForgotPasswordScreen() {
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -56,10 +58,11 @@ export default function ForgotPasswordScreen() {
   return (
     <View style={styles.root}>
       {/* Hero background */}
-      <Image
+      <ExpoImage
         source={require('@/assets/auth/login-background.jpg')}
         style={styles.hero}
-        resizeMode="cover"
+        contentFit="cover"
+        contentPosition="top"
       />
       <LinearGradient
         colors={['rgba(5,6,10,0.1)', 'rgba(5,6,10,0.88)', '#05060a']}
@@ -69,8 +72,8 @@ export default function ForgotPasswordScreen() {
 
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         {/* Back button */}
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={18} color={Colors.accent} />
+        <TouchableOpacity style={[styles.backBtn, { top: insets.top + Spacing.xs }]} onPress={() => router.back()} hitSlop={10}>
+          <Ionicons name="chevron-back" size={20} color={Colors.accent} />
         </TouchableOpacity>
 
         <KeyboardAvoidingView
@@ -145,17 +148,17 @@ export default function ForgotPasswordScreen() {
 
                 <Pressable style={styles.ctaBtn} onPress={handleSendReset} disabled={loading}>
                   <LinearGradient
-                    colors={[Colors.accent, Colors.iconEnergyCyan]}
+                    colors={Gradients.accentButton}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={StyleSheet.absoluteFill}
                   />
                   {loading ? (
-                    <ActivityIndicator size="small" color="#06070D" />
+                    <ActivityIndicator size="small" color={Colors.textOnAccent} />
                   ) : (
                     <>
                       <Text style={styles.ctaText}>Send Reset Link</Text>
-                      <Ionicons name="arrow-forward" size={16} color="#06070D" />
+                      <Ionicons name="arrow-forward" size={16} color={Colors.textOnAccent} />
                     </>
                   )}
                 </Pressable>
@@ -293,7 +296,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     overflow: 'hidden',
   },
-  ctaText: { fontFamily: FontFamily.bodyBold, fontSize: FontSize.lg, color: '#06070D' },
+  ctaText: { fontFamily: FontFamily.bodyBold, fontSize: FontSize.lg, color: Colors.textOnAccent },
 
   linkRow: { alignItems: 'center', marginTop: Spacing.lg },
   linkText: { fontSize: FontSize.sm, color: Colors.textSecondary },

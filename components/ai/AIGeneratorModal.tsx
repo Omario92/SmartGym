@@ -731,29 +731,31 @@ export const AIGeneratorModal: React.FC<AIGeneratorModalProps> = ({
   // Determine initial step when modal opens
   useEffect(() => {
     if (!visible) return;
-    // Sync local profile state from settings
-    setProfile(settings.aiProfile ?? DEFAULT_AI_PROFILE);
-    
-    // Always prioritize the environment variable over the persisted Zustand state
-    const envKey = 
-      process.env.EXPO_PUBLIC_OPENROUTER_API_KEY || 
-      process.env.EXPO_PUBLIC_GEMINI_API_KEY || 
-      '';
-    const currentKey = envKey || settings.geminiApiKey || '';
-    setApiKey(currentKey);
-    setError(null);
-    setGeneratedRoutine(null);
+    queueMicrotask(() => {
+      // Sync local profile state from settings
+      setProfile(settings.aiProfile ?? DEFAULT_AI_PROFILE);
+      
+      // Always prioritize the environment variable over the persisted Zustand state
+      const envKey = 
+        process.env.EXPO_PUBLIC_OPENROUTER_API_KEY || 
+        process.env.EXPO_PUBLIC_GEMINI_API_KEY || 
+        '';
+      const currentKey = envKey || settings.geminiApiKey || '';
+      setApiKey(currentKey);
+      setError(null);
+      setGeneratedRoutine(null);
 
-    if (!settings.isPremium) {
-      setStep('gate');
-    } else if (!currentKey) {
-      // Only show key step if no env var AND no persisted key
-      setStep('key');
-    } else if (!isAIProfileComplete(settings.aiProfile)) {
-      setStep('profile');
-    } else {
-      setStep('confirm');
-    }
+      if (!settings.isPremium) {
+        setStep('gate');
+      } else if (!currentKey) {
+        // Only show key step if no env var AND no persisted key
+        setStep('key');
+      } else if (!isAIProfileComplete(settings.aiProfile)) {
+        setStep('profile');
+      } else {
+        setStep('confirm');
+      }
+    });
   }, [visible]);
 
   // Animate loading text
@@ -763,7 +765,9 @@ export const AIGeneratorModal: React.FC<AIGeneratorModalProps> = ({
       return;
     }
     let idx = 0;
-    setLoadingText(LOADING_STEPS[0]);
+    queueMicrotask(() => {
+      setLoadingText(LOADING_STEPS[0]);
+    });
     loadingInterval.current = setInterval(() => {
       idx = (idx + 1) % LOADING_STEPS.length;
       setLoadingText(LOADING_STEPS[idx]);

@@ -6,19 +6,20 @@
 import React, { useState, useRef } from 'react';
 import {
   View, Image, ScrollView, StyleSheet, TouchableOpacity, Pressable,
-  Dimensions, Alert, Animated, ActivityIndicator,
+  Dimensions, Alert, Animated,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SvgXml } from 'react-native-svg';
-import { Colors, Spacing, Radius, FontSize, FontFamily, Shadow } from '@/lib/theme';
+import { Colors, Spacing, Radius, FontSize, FontFamily, Shadow, Gradients, withAlpha } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
-import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
+import { SectionHeader } from '@/components/ui/SectionHeader';
+import { LoadingState } from '@/components/ui/LoadingState';
 import { GlowOrb } from '@/components/ui/GlowOrb';
+import { TAB_BAR_HEIGHT } from './_layout';
 import { AI_COACH_SVG } from '@/components/ui/designIcons';
 import { muscleIcons } from '@/lib/muscleIcons';
 import { GlobalExerciseSearch } from '@/components/exercise/GlobalExerciseSearch';
@@ -213,6 +214,10 @@ function programToRoutine(program: typeof FEATURED_PROGRAMS[0]): Routine {
   };
 }
 
+function generateSavedId(id: string): string {
+  return `saved_${id}_${Date.now()}`;
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 const ProgramCard: React.FC<{
@@ -277,14 +282,18 @@ const CategoryChip: React.FC<{
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.85}
-      style={[styles.muscleCard, { borderColor: cat.color, shadowColor: cat.color }]}
+      style={[styles.muscleCard, { borderColor: withAlpha(cat.color, 0.45) }]}
     >
+      <View style={[styles.muscleCardTint, { backgroundColor: withAlpha(cat.color, 0.1) }]} />
       {muscleImg ? (
         <Image source={muscleImg} style={styles.muscleCardImg} resizeMode="contain" />
       ) : (
         <Text style={styles.muscleCardEmoji}>{cat.icon}</Text>
       )}
       <Text style={styles.muscleCardLabel}>{cat.label}</Text>
+      {cat.count > 0 ? (
+        <Text style={styles.muscleCardCount}>{cat.count}</Text>
+      ) : null}
     </TouchableOpacity>
   );
 };
@@ -292,6 +301,7 @@ const CategoryChip: React.FC<{
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function ExploreScreen() {
+  const insets = useSafeAreaInsets();
   const addRoutine = useStore((s) => s.addRoutine);
   const startWorkout = useStore((s) => s.startWorkout);
   const customExercises = useStore(selectCustomExercises);
@@ -343,7 +353,7 @@ export default function ExploreScreen() {
     
     addRoutine({
       ...routine,
-      id: `saved_${routine.id}_${Date.now()}`, // Ensure unique ID for saved copy
+      id: generateSavedId(routine.id), // Ensure unique ID for saved copy
     });
     setSavedIds((prev) => new Set(prev).add(program.id));
     showToast(`✅ "${routine.name}" saved to Routines!`);
@@ -426,11 +436,18 @@ export default function ExploreScreen() {
         </View>
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + TAB_BAR_HEIGHT + Spacing.xxxl },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
         {/* AI Smart Trainer */}
         <View style={styles.aiCard}>
           <LinearGradient
-            colors={['#241238', '#0C2432']}
+            colors={Gradients.aiExplore}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
@@ -454,12 +471,13 @@ export default function ExploreScreen() {
 
               <Pressable style={styles.aiGenerateBtn} onPress={() => setAiModalVisible(true)}>
                 <LinearGradient
-                  colors={[Colors.iconCinematicViolet, Colors.iconEnergyCyan]}
+                  colors={Gradients.aiButton}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={StyleSheet.absoluteFill}
                 />
                 <Text style={styles.aiGenerateBtnText}>Generate My Plan</Text>
+                <Ionicons name="arrow-forward" size={15} color={Colors.textPrimary} />
               </Pressable>
             </View>
             <View style={styles.aiIconWrapLarge}>
@@ -484,12 +502,14 @@ export default function ExploreScreen() {
         {/* My Custom Exercises section */}
         {customExercises.length > 0 && (
           <View>
-            <View style={styles.sectionHeader}>
-              <Text variant="h4">My Custom Exercises</Text>
-              <TouchableOpacity onPress={() => router.push('/routine/add-custom-exercise')}>
-                <Text color="accent" style={{ fontSize: FontSize.sm }}>+ Create new</Text>
-              </TouchableOpacity>
-            </View>
+            <SectionHeader
+              title="My Custom Exercises"
+              action={{
+                label: '+ Create new',
+                onPress: () => router.push('/routine/add-custom-exercise'),
+              }}
+              style={styles.sectionHeader}
+            />
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -562,18 +582,15 @@ export default function ExploreScreen() {
         )}
 
         {/* Featured Programs */}
-        <View style={styles.sectionHeader}>
-          <Text variant="h4" style={{ fontWeight: 'bold' }}>Featured Programs</Text>
-          <TouchableOpacity onPress={() => router.push('/workout/all-exercises')}>
-            <Text color="accent" style={{ fontSize: FontSize.sm, fontWeight: 'bold' }}>See all</Text>
-          </TouchableOpacity>
-        </View>
+        <SectionHeader
+          title="Featured Programs"
+          action={{ label: 'See all', onPress: () => router.push('/workout/all-exercises') }}
+          style={styles.sectionHeader}
+        />
 
         <View style={styles.verticalListContainer}>
           {loading && dynamicPrograms.length === 0 ? (
-            <View style={{ height: 180, justifyContent: 'center', alignItems: 'center' }}>
-              <ActivityIndicator color={Colors.accent} />
-            </View>
+            <LoadingState label="Loading programs…" minHeight={180} />
           ) : dynamicPrograms.length > 0 ? (
             dynamicPrograms.map((p) => (
               <TouchableOpacity 
@@ -634,9 +651,7 @@ export default function ExploreScreen() {
         </View>
 
         {/* Quick Workouts */}
-        <View style={styles.sectionHeader}>
-          <Text variant="h4">Quick Workouts</Text>
-        </View>
+        <SectionHeader title="Quick Workouts" style={styles.sectionHeader} />
         <View style={styles.quickWorkoutsGrid}>
           {QUICK_WORKOUTS.map((w) => (
             <TouchableOpacity
@@ -653,12 +668,11 @@ export default function ExploreScreen() {
         </View>
 
         {/* Browse by Muscle */}
-        <View style={styles.sectionHeader}>
-          <Text variant="h4">Browse by Muscle</Text>
-          <TouchableOpacity onPress={() => router.push('/workout/all-exercises')}>
-            <Text color="accent" style={{ fontSize: FontSize.sm }}>All exercises</Text>
-          </TouchableOpacity>
-        </View>
+        <SectionHeader
+          title="Browse by Muscle"
+          action={{ label: 'All exercises', onPress: () => router.push('/workout/all-exercises') }}
+          style={styles.sectionHeader}
+        />
         <View style={styles.categoriesGrid}>
           {categoriesWithCount.map((cat) => (
             <CategoryChip
@@ -669,25 +683,6 @@ export default function ExploreScreen() {
           ))}
         </View>
 
-        {/* Personal Trainer upsell */}
-        <Card style={styles.trainerCard} premium>
-          <View style={styles.trainerInner}>
-            <Text style={{ fontSize: 36 }}>👨‍💼</Text>
-            <View style={{ flex: 1, marginLeft: Spacing.md }}>
-              <Text variant="h4" style={{ marginBottom: 4 }}>Work with a Trainer</Text>
-              <Text color="secondary" style={{ fontSize: FontSize.sm, lineHeight: 18 }}>
-                Connect with certified personal trainers for custom programs and coaching.
-              </Text>
-              <Button
-                title="Find a Trainer"
-                variant="premium"
-                size="sm"
-                style={{ marginTop: Spacing.md, alignSelf: 'flex-start' }}
-                onPress={() => Alert.alert('Coming Soon', 'Personal Trainer feature launching soon!')}
-              />
-            </View>
-          </View>
-        </Card>
       </ScrollView>
 
       {/* Toast */}
@@ -714,7 +709,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.xl,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(139,92,255,0.4)',
+    borderColor: Colors.borderViolet,
     shadowColor: Colors.iconCinematicViolet,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.22,
@@ -723,12 +718,16 @@ const styles = StyleSheet.create({
   },
   aiCardInner: { flexDirection: 'row', alignItems: 'center', padding: Spacing.xl },
   aiHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.sm },
-  aiSubtext: { fontSize: FontSize.md, lineHeight: 22, marginBottom: Spacing.sm, color: '#C8C8E0' },
+  aiSubtext: { fontSize: FontSize.md, lineHeight: 22, marginBottom: Spacing.sm, color: Colors.textCoach },
   aiList: { marginTop: Spacing.xs },
-  aiListItem: { fontSize: FontSize.sm, lineHeight: 20, marginBottom: 2, color: '#C8C8E0' },
+  aiListItem: { fontSize: FontSize.sm, lineHeight: 20, marginBottom: 2, color: Colors.textCoach },
   aiGenerateBtn: {
     marginTop: Spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
     alignSelf: 'flex-start',
+    minHeight: 44,
     paddingHorizontal: Spacing.xl,
     paddingVertical: Spacing.md - 2,
     borderRadius: Radius.full,
@@ -792,17 +791,18 @@ const styles = StyleSheet.create({
     width: (SCREEN_W - Spacing.lg * 2 - (Spacing.sm + 2) * 2) / 3,
     height: 150,
     borderRadius: Radius.md + 2,
-    backgroundColor: Colors.bg,
+    backgroundColor: Colors.surfaceElevated,
     borderWidth: 1,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    gap: Spacing.sm,
+    gap: Spacing.xs,
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.xs,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    elevation: 6,
+    ...Shadow.soft,
+  },
+  muscleCardTint: {
+    ...StyleSheet.absoluteFill,
   },
   muscleCardImg: { width: 69, height: 69, flex: 1 },
   muscleCardEmoji: { fontSize: 40, flex: 1, textAlignVertical: 'center' },
@@ -810,6 +810,11 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     fontFamily: FontFamily.bodyBold,
     color: Colors.textPrimary,
+  },
+  muscleCardCount: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.body,
+    color: Colors.textMuted,
   },
   searchBtnGlow: {
     borderColor: Colors.accentGlow,
@@ -825,7 +830,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     height: 48,
     borderWidth: 1,
-    borderColor: 'rgba(150,151,190,0.2)',
+    borderColor: Colors.borderSubtle,
     gap: Spacing.sm,
   },
   globalSearchBadge: {
@@ -890,8 +895,6 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   createCustomLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  trainerCard: { marginHorizontal: Spacing.lg, marginBottom: Spacing.xl },
-  trainerInner: { flexDirection: 'row', alignItems: 'flex-start' },
   toast: {
     position: 'absolute', bottom: 30, alignSelf: 'center',
     backgroundColor: Colors.accent, paddingHorizontal: Spacing.lg,

@@ -18,19 +18,21 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import { router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image as ExpoImage } from 'expo-image';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SvgXml } from 'react-native-svg';
-import { Colors, Spacing, Radius, FontSize, FontFamily } from '@/lib/theme';
+import { Colors, Spacing, Radius, FontSize, FontFamily, Gradients } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { GlowOrb } from '@/components/ui/GlowOrb';
 import { GOOGLE_SVG } from '@/components/ui/designIcons';
 import { supabase } from '@/lib/supabase';
 
-const GOLD = '#FFD36A';
+const GOLD = Colors.iconPremiumGold;
 
 export default function RegisterScreen() {
+  const insets = useSafeAreaInsets();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -87,10 +89,11 @@ export default function RegisterScreen() {
   return (
     <View style={styles.root}>
       {/* Hero background */}
-      <Image
+      <ExpoImage
         source={require('@/assets/auth/login-background.jpg')}
         style={styles.hero}
-        resizeMode="cover"
+        contentFit="cover"
+        contentPosition="top"
       />
       <LinearGradient
         colors={['rgba(5,6,10,0.1)', 'rgba(5,6,10,0.88)', '#05060a']}
@@ -99,8 +102,8 @@ export default function RegisterScreen() {
       />
 
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={18} color={Colors.accent} />
+        <TouchableOpacity style={[styles.backBtn, { top: insets.top + Spacing.xs }]} onPress={() => router.back()} hitSlop={10}>
+          <Ionicons name="chevron-back" size={20} color={Colors.accent} />
         </TouchableOpacity>
 
         <KeyboardAvoidingView
@@ -196,7 +199,11 @@ export default function RegisterScreen() {
                     secureTextEntry={!showPassword}
                     autoCapitalize="none"
                   />
-                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ padding: 4 }}>
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    style={{ padding: 4 }}
+                    hitSlop={10}
+                  >
                     <Ionicons
                       name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                       size={18}
@@ -222,7 +229,7 @@ export default function RegisterScreen() {
                 {/* Terms */}
                 <TouchableOpacity style={styles.termsRow} onPress={() => setAgreeTerms(!agreeTerms)}>
                   <View style={[styles.checkbox, agreeTerms && styles.checkboxChecked]}>
-                    {agreeTerms && <Ionicons name="checkmark" size={12} color="#000" />}
+                    {agreeTerms && <Ionicons name="checkmark" size={12} color={Colors.textOnAccent} />}
                   </View>
                   <Text style={styles.termsText}>
                     I agree to the <Text style={{ color: Colors.accent }}>Terms of Service</Text> and{' '}
@@ -233,17 +240,17 @@ export default function RegisterScreen() {
                 {/* Submit */}
                 <Pressable style={styles.ctaBtn} onPress={handleRegister} disabled={loading}>
                   <LinearGradient
-                    colors={[Colors.accent, Colors.iconEnergyCyan]}
+                    colors={Gradients.accentButton}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={StyleSheet.absoluteFill}
                   />
                   {loading ? (
-                    <ActivityIndicator size="small" color="#06070D" />
+                    <ActivityIndicator size="small" color={Colors.textOnAccent} />
                   ) : (
                     <>
                       <Text style={styles.ctaText}>Create Account</Text>
-                      <Ionicons name="arrow-forward" size={16} color="#06070D" />
+                      <Ionicons name="arrow-forward" size={16} color={Colors.textOnAccent} />
                     </>
                   )}
                 </Pressable>
@@ -430,7 +437,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     overflow: 'hidden',
   },
-  ctaText: { fontFamily: FontFamily.bodyBold, fontSize: FontSize.lg, color: '#06070D' },
+  ctaText: { fontFamily: FontFamily.bodyBold, fontSize: FontSize.lg, color: Colors.textOnAccent },
 
   divider: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginVertical: Spacing.lg },
   dividerLine: { flex: 1, height: 1 },

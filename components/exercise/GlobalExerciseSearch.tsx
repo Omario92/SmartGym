@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { Colors, Spacing, Radius, FontSize, Shadow } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { ExerciseCard } from './ExerciseCard';
@@ -179,7 +179,7 @@ export const GlobalExerciseSearch: React.FC<GlobalExerciseSearchProps> = ({
           ItemSeparatorComponent={() => <View style={{ height: Spacing.sm }} />}
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
-            <Animated.View entering={FadeIn.duration(300)} style={styles.empty}>
+            <Animated.View style={styles.empty}>
               <Text style={{ fontSize: 36 }}>🔍</Text>
               <Text semibold style={{ marginTop: Spacing.md, marginBottom: Spacing.sm }}>
                 No exercises found

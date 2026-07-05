@@ -51,6 +51,8 @@ export interface Routine {
   color: string;
   estimatedDuration?: number; // minutes
   category?: string;
+  /** Local-only: hidden from the main list but not deleted (recoverable). */
+  archived?: boolean;
   // Sync metadata
   cloudId?: string;
   updatedAt?: string;
@@ -207,6 +209,8 @@ export interface SmartGymState {
   updateRoutine: (id: string, updates: Partial<Routine>) => void;
   deleteRoutine: (id: string) => void;
   duplicateRoutine: (id: string) => void;
+  archiveRoutine: (id: string) => void;
+  unarchiveRoutine: (id: string) => void;
 
   // Custom Exercises
   addCustomExercise: (exercise: CustomExercise) => void;
@@ -402,7 +406,28 @@ export const useStore = create<SmartGymState>()(
               name: `${routine.name} (Copy)`,
               createdAt: new Date().toISOString(),
               lastPerformed: undefined,
+              archived: false,
             });
+          }
+        }),
+
+      archiveRoutine: (id) =>
+        set((state) => {
+          const r = state.routines.find((r) => r.id === id);
+          if (r) {
+            r.archived = true;
+            r.syncStatus = 'dirty';
+            r.updatedAt = new Date().toISOString();
+          }
+        }),
+
+      unarchiveRoutine: (id) =>
+        set((state) => {
+          const r = state.routines.find((r) => r.id === id);
+          if (r) {
+            r.archived = false;
+            r.syncStatus = 'dirty';
+            r.updatedAt = new Date().toISOString();
           }
         }),
 

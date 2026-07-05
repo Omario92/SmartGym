@@ -12,7 +12,6 @@ import {
   StyleSheet,
   Alert,
   TouchableOpacity,
-  ActivityIndicator,
   Image,
   Dimensions,
 } from 'react-native';
@@ -24,6 +23,7 @@ import { Colors, Spacing, Radius, FontSize, FontFamily } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { LoadingState } from '@/components/ui/LoadingState';
 import { ExerciseForm, type ExerciseFormValues } from '@/components/exercise/ExerciseForm';
 import { ExerciseMediaPicker } from '@/components/exercise/ExerciseMediaPicker';
 import { ExerciseMediaPreview, NoMediaPlaceholder } from '@/components/exercise/ExerciseMediaPreview';
@@ -58,7 +58,11 @@ export default function ExerciseDetailScreen() {
 
   // Sync media from fetched exercise when it loads
   React.useEffect(() => {
-    if (exercise?.media) setMedia(exercise.media);
+    if (exercise?.media) {
+      queueMicrotask(() => {
+        setMedia(exercise.media);
+      });
+    }
   }, [exercise?.media]);
 
   // ─── Hero media (first image, gif, or video) ───────────────────────────
@@ -136,9 +140,7 @@ export default function ExerciseDetailScreen() {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.safe}>
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={Colors.accent} />
-        </View>
+        <LoadingState fill label="Loading exercise…" />
       </SafeAreaView>
     );
   }
@@ -169,7 +171,7 @@ export default function ExerciseDetailScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn} hitSlop={8}>
           <Ionicons name="chevron-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>

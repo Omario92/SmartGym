@@ -29,7 +29,6 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  FadeIn,
 } from 'react-native-reanimated';
 import { Colors, Spacing, Radius, FontSize, FontFamily, Shadow } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
@@ -236,7 +235,7 @@ const ImagePickerSection: React.FC<{
         </View>
       )}
       {!loading && imageUrl ? (
-        <Animated.View entering={FadeIn.duration(400)} style={styles.imagePreviewWrap}>
+        <Animated.View style={styles.imagePreviewWrap}>
           <ExerciseImage
             uri={imageUrl}
             width={SCREEN_W - Spacing.lg * 4}
@@ -288,7 +287,7 @@ const LivePreviewCard: React.FC<{
   };
 
   return (
-    <Animated.View entering={FadeIn.duration(500)} style={styles.previewCard}>
+    <Animated.View style={styles.previewCard}>
       <Text
         style={{
           fontSize: FontSize.xs,

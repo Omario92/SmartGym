@@ -15,7 +15,7 @@ import Reanimated, {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SvgXml } from 'react-native-svg';
-import { Colors, Spacing, Radius, FontSize, FontFamily, Shadow } from '@/lib/theme';
+import { Colors, Spacing, Radius, FontSize, FontFamily, Shadow, Gradients, withAlpha } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { Card } from '@/components/ui/Card';
 import { ProgressRing } from '@/components/ui/ProgressRing';
@@ -57,7 +57,7 @@ const useToast = () => {
 
   const ToastComponent = () => (
     <Animated.View style={[styles.toast, { opacity }]} pointerEvents="none">
-      <Text style={{ color: '#000', fontFamily: FontFamily.bodyBold, fontSize: FontSize.sm }}>
+      <Text style={{ color: Colors.textOnAccent, fontFamily: FontFamily.bodyBold, fontSize: FontSize.sm }}>
         {message}
       </Text>
     </Animated.View>
@@ -134,12 +134,12 @@ const SwipeableSessionCard: React.FC<{
     <View style={styles.swipeContainer}>
       {/* Delete button revealed on swipe */}
       <View style={styles.deleteReveal}>
-        <Ionicons name="trash" size={22} color="#fff" />
+        <Ionicons name="trash" size={22} color={Colors.textOnDark} />
       </View>
 
       <GestureDetector gesture={pan}>
         <Reanimated.View style={[styles.sessionCard, animStyle]}>
-          <View style={[styles.sessionColorBar, { backgroundColor: color, shadowColor: color }]} />
+          <View style={[styles.sessionColorBar, { backgroundColor: color }]} />
           <View style={styles.sessionLeft}>
             <View style={styles.sessionDateBox}>
               <Text style={{ fontSize: FontSize.xl, fontFamily: FontFamily.bodyBlack, color: Colors.iconActive }}>
@@ -200,7 +200,7 @@ const ClearAllModal: React.FC<{ visible: boolean; onConfirm: () => void; onCance
           This will permanently delete all your workout sessions. This action cannot be undone.
         </Text>
         <TouchableOpacity style={styles.modalConfirmBtn} onPress={onConfirm}>
-          <Text style={{ color: '#fff', fontFamily: FontFamily.bodyBold }}>Yes, Clear All</Text>
+          <Text style={{ color: Colors.textOnDark, fontFamily: FontFamily.bodyBold }}>Yes, Clear All</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.modalCancelBtn} onPress={onCancel}>
           <Text color="secondary">Cancel</Text>
@@ -314,7 +314,7 @@ export default function HistoryScreen() {
             style={[styles.periodBtn, period === p && styles.periodBtnActive]}
             onPress={() => setPeriod(p)}
           >
-            <Text style={[styles.periodLabel, { color: period === p ? '#06070D' : Colors.iconInactive }]}>
+            <Text style={[styles.periodLabel, { color: period === p ? Colors.textOnAccent : Colors.iconInactive }]}>
               {p.charAt(0).toUpperCase() + p.slice(1)}
             </Text>
           </TouchableOpacity>
@@ -325,7 +325,7 @@ export default function HistoryScreen() {
         {/* Overview */}
         <View style={styles.overviewCard}>
           <LinearGradient
-            colors={['#1C1330', '#0A1F2B']}
+            colors={Gradients.history}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
@@ -447,7 +447,7 @@ export default function HistoryScreen() {
                         onPress={() => setSelectedStrengthEx(id)}
                         style={[styles.exercisePill, isActive && styles.exercisePillActive]}
                       >
-                        <Text style={{ color: isActive ? '#000' : Colors.textPrimary, fontSize: FontSize.sm, fontFamily: isActive ? FontFamily.bodyBold : FontFamily.bodyMedium }}>
+                        <Text style={{ color: isActive ? Colors.textOnAccent : Colors.textPrimary, fontSize: FontSize.sm, fontFamily: isActive ? FontFamily.bodyBold : FontFamily.bodyMedium }}>
                           {name}
                         </Text>
                       </TouchableOpacity>
@@ -550,12 +550,12 @@ const styles = StyleSheet.create({
   headerBtn: {
     width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.iconPanel,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: 'rgba(150,151,190,0.2)',
+    borderWidth: 1, borderColor: Colors.borderSubtle,
   },
   periodSelector: {
     flexDirection: 'row', marginHorizontal: Spacing.lg, backgroundColor: Colors.iconPanel,
     borderRadius: Radius.md, padding: 4, marginBottom: Spacing.md,
-    borderWidth: 1, borderColor: 'rgba(150,151,190,0.2)',
+    borderWidth: 1, borderColor: Colors.borderSubtle,
   },
   periodBtn: { flex: 1, paddingVertical: Spacing.md, borderRadius: Radius.sm, alignItems: 'center' },
   periodBtnActive: { backgroundColor: Colors.iconActive },
@@ -568,7 +568,7 @@ const styles = StyleSheet.create({
     padding: Spacing.xl,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(0,245,160,0.3)',
+    borderColor: withAlpha(Colors.iconActive, 0.3),
     shadowColor: Colors.iconActive,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.15,
@@ -586,7 +586,7 @@ const styles = StyleSheet.create({
   overviewDivider: { width: 1, height: 36, backgroundColor: Colors.border },
   weekBar: { flexDirection: 'row', justifyContent: 'space-around' },
   weekDay: { alignItems: 'center', gap: 4 },
-  weekDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: 'rgba(255,255,255,0.08)' },
+  weekDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.glassBgStrong },
   weekDotActive: {
     backgroundColor: Colors.iconActive,
     shadowColor: Colors.iconActive,
@@ -597,7 +597,7 @@ const styles = StyleSheet.create({
   },
   tabRow: {
     flexDirection: 'row', backgroundColor: Colors.iconPanel, borderRadius: Radius.md,
-    padding: 3, marginBottom: Spacing.md, borderWidth: 1, borderColor: 'rgba(150,151,190,0.2)',
+    padding: 3, marginBottom: Spacing.md, borderWidth: 1, borderColor: Colors.borderSubtle,
   },
   tabBtn: { flex: 1, paddingVertical: Spacing.sm, borderRadius: Radius.sm, alignItems: 'center' },
   tabBtnActive: { backgroundColor: 'rgba(255,255,255,0.06)' },
@@ -606,7 +606,7 @@ const styles = StyleSheet.create({
   swipeContainer: { marginBottom: Spacing.sm, borderRadius: Radius.lg, overflow: 'hidden' },
   deleteReveal: {
     position: 'absolute', right: 0, top: 0, bottom: 0, width: SWIPE_THRESHOLD,
-    backgroundColor: '#FF3B30', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.error, alignItems: 'center', justifyContent: 'center',
     borderRadius: Radius.lg,
   },
   sessionCard: {
@@ -615,10 +615,6 @@ const styles = StyleSheet.create({
   },
   sessionColorBar: {
     width: 4,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 10,
-    elevation: 6,
   },
   sessionLeft: {
     padding: Spacing.md,
@@ -638,7 +634,7 @@ const styles = StyleSheet.create({
   awardCard: {
     flex: 1, minWidth: (SCREEN_W - Spacing.lg * 2 - Spacing.md) / 2,
     backgroundColor: Colors.iconPanel, borderRadius: Radius.lg, padding: Spacing.lg,
-    borderWidth: 1, borderColor: 'rgba(150,151,190,0.15)', alignItems: 'center',
+    borderWidth: 1, borderColor: Colors.borderSubtle, alignItems: 'center',
   },
   awardLocked: { opacity: 0.45 },
   awardEmoji: { fontSize: 36, marginBottom: Spacing.sm },
@@ -654,7 +650,7 @@ const styles = StyleSheet.create({
 
   // Modal
   modalOverlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.7)',
+    flex: 1, backgroundColor: Colors.scrimStrong,
     alignItems: 'center', justifyContent: 'center', padding: Spacing.xl,
   },
   modalBox: {
@@ -663,7 +659,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalConfirmBtn: {
-    backgroundColor: '#FF3B30', paddingVertical: Spacing.md,
+    backgroundColor: Colors.error, paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.xl, borderRadius: Radius.md,
     width: '100%', alignItems: 'center', marginBottom: Spacing.md,
   },

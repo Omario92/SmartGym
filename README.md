@@ -4,6 +4,7 @@ A **premium, production-ready fitness tracking app** built with Expo SDK 57 + Re
 
 ## ✨ Features
 
+- **v5.7 Secure Storage & Lint Fixes** — Secure keychain-backed session storage using a chunked `expo-secure-store` adapter (with automatic fallback to `AsyncStorage` on web/Expo Go), resolved React hook purity and state-in-effect issues, and updated dependencies for Expo SDK 57.
 - **v5.6 Auth Flow & Premium UI Enhancements** — Forgot Password screen with Supabase reset email integration, nested gradient borders, custom Google/Apple SVG buttons, gold branding accents (#FFD36A), Space Grotesk display typography, and GlowOrb neon glow backdrops on all main tabs.
 - **v5.5 Database Seed & Fallback Alignment** — Automatic PostgreSQL SQL seed script for catalog exercises, and improved cache fallback logic for offline reliability.
 - **v5.4 UI & UX Refinement** — Coach AI Card styling redesign, routine list deduplication, and custom UI components like RoutineCard updates.

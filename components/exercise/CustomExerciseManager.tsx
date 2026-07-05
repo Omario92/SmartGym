@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { Colors, Spacing, Radius, FontSize, FontFamily, Shadow } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { ExerciseImage } from './ExerciseImage';
@@ -119,7 +119,7 @@ export const CustomExerciseManager: React.FC<CustomExerciseManagerProps> = ({
     const isFav = favoriteIds.includes(item.id);
     const isCloud = item.isCloud === true;
     return (
-      <Animated.View entering={FadeIn.duration(250)}>
+      <Animated.View>
         <TouchableOpacity
           style={styles.item}
           onPress={() => onSelect?.(item)}
@@ -311,7 +311,7 @@ export const CustomExerciseManager: React.FC<CustomExerciseManagerProps> = ({
 
           {/* Filter panel */}
           {showFilters && (
-            <Animated.View entering={FadeIn.duration(200)} style={styles.filterPanel}>
+            <Animated.View style={styles.filterPanel}>
               {/* Muscle filter */}
               <Text color="muted" style={styles.filterLabel}>Muscle Group</Text>
               <ScrollView
@@ -380,7 +380,7 @@ export const CustomExerciseManager: React.FC<CustomExerciseManagerProps> = ({
 
       {/* Empty state */}
       {customExercises.length === 0 && (
-        <Animated.View entering={FadeIn.duration(400)} style={styles.empty}>
+        <Animated.View style={styles.empty}>
           <View style={styles.emptyIconWrap}>
             <Text style={{ fontSize: 52 }}>🏗️</Text>
           </View>

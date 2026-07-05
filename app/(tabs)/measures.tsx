@@ -15,14 +15,17 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import Svg, { Polyline, Line, Circle, SvgXml } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
-import Reanimated, { useAnimatedStyle, withTiming, useSharedValue, FadeIn, FadeInDown } from 'react-native-reanimated';
-import { Colors, Spacing, Radius, FontSize, Shadow } from '@/lib/theme';
+import Reanimated, { useAnimatedStyle, withSpring, useSharedValue, runOnJS } from 'react-native-reanimated';
+import { Colors, Spacing, Radius, FontSize, FontFamily, withAlpha } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { FadeInView } from '@/components/ui/FadeInView';
 import { EMPTY_STATE_SVG } from '@/components/ui/designIcons';
 import { useStore } from '@/store';
 import type { BodyMeasure } from '@/store';
@@ -85,7 +88,7 @@ const AddMeasureModal: React.FC<{
           {/* Modal Header */}
           <View style={styles.modalHeader}>
             <Text variant="h4">Add Measurements</Text>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity onPress={onClose} hitSlop={10}>
               <Ionicons name="close" size={24} color={Colors.textSecondary} />
             </TouchableOpacity>
           </View>
@@ -166,33 +169,80 @@ const MiniLineChart: React.FC<{ values: number[]; color?: string }> = ({
 
 // ─── Measure Log Item ──────────────────────────────────────────────────────────
 
+const LOG_REVEAL_WIDTH = 84;
+
 const MeasureLogItem: React.FC<{
   m: BodyMeasure;
-  isDeleting: boolean;
-  onLongPress: () => void;
-  onPress: () => void;
+  isOpen: boolean;
+  haptics?: boolean;
+  onOpen: () => void;
+  onClose: () => void;
   onDelete: () => void;
-}> = ({ m, isDeleting, onLongPress, onPress, onDelete }) => {
-  const translateX = useSharedValue(0);
+}> = ({ m, isOpen, haptics, onOpen, onClose, onDelete }) => {
+  const tx = useSharedValue(0);
+  const startX = useSharedValue(0);
 
   React.useEffect(() => {
-    translateX.value = withTiming(isDeleting ? -80 : 0, { duration: 250 });
-  }, [isDeleting]);
+    tx.value = withSpring(isOpen ? -LOG_REVEAL_WIDTH : 0, { damping: 18, stiffness: 220 });
+  }, [isOpen]);
+
+  const pan = Gesture.Pan()
+    .activeOffsetX([-14, 14])
+    .failOffsetY([-12, 12])
+    .onBegin(() => {
+      startX.value = tx.value;
+    })
+    .onUpdate((e) => {
+      tx.value = Math.min(0, Math.max(-LOG_REVEAL_WIDTH, startX.value + e.translationX));
+    })
+    .onEnd(() => {
+      if (tx.value < -LOG_REVEAL_WIDTH / 2) {
+        tx.value = withSpring(-LOG_REVEAL_WIDTH, { damping: 18, stiffness: 220 });
+        runOnJS(onOpen)();
+      } else {
+        tx.value = withSpring(0, { damping: 18, stiffness: 220 });
+        runOnJS(onClose)();
+      }
+    });
 
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
+    transform: [{ translateX: tx.value }],
   }));
+
+  const handleLongPress = () => {
+    if (haptics) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    }
+    onOpen();
+  };
+
+  const handleDelete = () => {
+    if (haptics) {
+      Haptics.selectionAsync().catch(() => {});
+    }
+    onDelete();
+  };
 
   return (
     <View style={styles.logEntryContainer}>
       <View style={styles.logEntryDeleteBg}>
-        <TouchableOpacity style={styles.logEntryDeleteBtn} onPress={onDelete}>
-          <Ionicons name="trash" size={24} color="#FFF" />
+        <TouchableOpacity style={styles.logEntryDeleteBtn} onPress={handleDelete} hitSlop={8}>
+          <Ionicons name="trash" size={20} color={Colors.textOnDark} />
+          <Text style={styles.logEntryDeleteLabel}>Delete</Text>
         </TouchableOpacity>
       </View>
 
-      <Reanimated.View style={[styles.logEntryForeground, animatedStyle]}>
-        <TouchableOpacity activeOpacity={1} onLongPress={onLongPress} onPress={onPress} style={{ padding: Spacing.md }}>
+      <GestureDetector gesture={pan}>
+        <Reanimated.View style={[styles.logEntryForeground, animatedStyle]}>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onLongPress={handleLongPress}
+            delayLongPress={280}
+            onPress={() => {
+              if (isOpen) onClose();
+            }}
+            style={{ padding: Spacing.md }}
+          >
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text color="muted" style={{ fontSize: FontSize.sm }}>
               {new Date(m.date).toLocaleDateString('en-US', {
@@ -215,8 +265,9 @@ const MeasureLogItem: React.FC<{
               return null;
             })}
           </View>
-        </TouchableOpacity>
-      </Reanimated.View>
+          </TouchableOpacity>
+        </Reanimated.View>
+      </GestureDetector>
     </View>
   );
 };
@@ -269,9 +320,10 @@ export default function MeasuresScreen() {
   const measures = useStore(s => s.measures);
   const addMeasure = useStore(s => s.addMeasure);
   const deleteMeasure = useStore(s => s.deleteMeasure);
+  const hapticsEnabled = useStore(s => s.settings.hapticFeedback);
 
   const [showModal, setShowModal] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [openLogId, setOpenLogId] = useState<string | null>(null);
 
   const handleSave = (measure: Omit<BodyMeasure, 'id'>) => {
     addMeasure({ ...measure, id: Date.now().toString() });
@@ -305,10 +357,10 @@ export default function MeasuresScreen() {
       >
         {!hasData ? (
           <>
-            <Reanimated.View entering={FadeIn.duration(400)} style={styles.emptyState}>
-              <Reanimated.View entering={FadeInDown.duration(400).delay(50)} style={styles.emptyIconBadge}>
+            <FadeInView style={styles.emptyState}>
+              <Reanimated.View style={styles.emptyIconBadge}>
                 <LinearGradient
-                  colors={['rgba(0,245,160,0.12)', 'rgba(139,92,255,0.10)']}
+                  colors={[withAlpha(Colors.iconActive, 0.12), withAlpha(Colors.iconCinematicViolet, 0.1)]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={StyleSheet.absoluteFill}
@@ -324,7 +376,7 @@ export default function MeasuresScreen() {
                 variant="outline"
                 onPress={() => setShowModal(true)}
               />
-            </Reanimated.View>
+            </FadeInView>
 
             {/* Info card */}
             <Card style={styles.infoCard}>
@@ -417,14 +469,13 @@ export default function MeasuresScreen() {
               <MeasureLogItem
                 key={m.id}
                 m={m}
-                isDeleting={deletingId === m.id}
-                onLongPress={() => setDeletingId(m.id)}
-                onPress={() => {
-                  if (deletingId) setDeletingId(null);
-                }}
+                isOpen={openLogId === m.id}
+                haptics={hapticsEnabled}
+                onOpen={() => setOpenLogId(m.id)}
+                onClose={() => setOpenLogId((cur) => (cur === m.id ? null : cur))}
                 onDelete={() => {
                   deleteMeasure(m.id);
-                  setDeletingId(null);
+                  setOpenLogId(null);
                 }}
               />
             ))}
@@ -457,7 +508,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: Spacing.xl,
     borderWidth: 1,
-    borderColor: 'rgba(0,245,160,0.3)',
+    borderColor: withAlpha(Colors.iconActive, 0.3),
     shadowColor: Colors.iconActive,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.18,
@@ -517,7 +568,7 @@ const styles = StyleSheet.create({
   logEntryContainer: {
     marginBottom: Spacing.sm,
     borderRadius: Radius.md,
-    backgroundColor: '#FF453A',
+    backgroundColor: Colors.error,
     overflow: 'hidden',
   },
   logEntryDeleteBg: {
@@ -526,10 +577,16 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   logEntryDeleteBtn: {
-    width: 80,
+    width: LOG_REVEAL_WIDTH,
     alignItems: 'center',
     justifyContent: 'center',
     height: '100%',
+    gap: 2,
+  },
+  logEntryDeleteLabel: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.bodyBold,
+    color: Colors.textOnDark,
   },
   logEntryForeground: {
     backgroundColor: Colors.bgCard,

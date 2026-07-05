@@ -10,7 +10,8 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query';
+import NetInfo from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFonts as useExpoFonts } from 'expo-font';
 import { Colors, FontFamily } from '@/lib/theme';
@@ -26,6 +27,12 @@ const queryClient = new QueryClient({
     queries: { retry: 2, staleTime: 1000 * 60 * 5 },
   },
 });
+
+// Pause/resume React Query based on real connectivity so requests don't spin
+// while offline and auto-refetch when the connection returns.
+onlineManager.setEventListener((setOnline) =>
+  NetInfo.addEventListener((state) => setOnline(state.isConnected ?? true))
+);
 
 export default function RootLayout() {
   const startTour = useStore(s => s.startTour);
@@ -49,12 +56,16 @@ export default function RootLayout() {
   // ── Zustand hydration ────────────────────────────────────────────────────────
   useEffect(() => {
     if (useStore.persist.hasHydrated()) {
-      setHydrated(true);
-      checkFirstLaunch();
-    } else {
-      const unsub = useStore.persist.onFinishHydration(() => {
+      queueMicrotask(() => {
         setHydrated(true);
         checkFirstLaunch();
+      });
+    } else {
+      const unsub = useStore.persist.onFinishHydration(() => {
+        queueMicrotask(() => {
+          setHydrated(true);
+          checkFirstLaunch();
+        });
       });
       return () => unsub();
     }

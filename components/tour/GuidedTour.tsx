@@ -8,19 +8,39 @@ import {
   View,
   Modal,
   StyleSheet,
-  Dimensions,
+  useWindowDimensions,
   TouchableOpacity,
   Animated,
-  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { Colors, Radius, Spacing, FontSize, Shadow } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { Button } from '@/components/ui/Button';
 import { useStore } from '@/store';
 import { useShallow } from 'zustand/react/shallow';
 
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+/** Height of the floating tab bar (mirrors app/(tabs)/_layout.tsx). */
+const TAB_BAR_HEIGHT = 64;
+
+/** The screen each step reveals behind the overlay so the user sees it live. */
+const STEP_ROUTE: Record<string, string> = {
+  full: '/',
+  tab_routines: '/',
+  fab: '/',
+  tab_explore: '/explore',
+  tab_history: '/history',
+  tab_measures: '/measures',
+  tab_more: '/more',
+};
+
+const TAB_INDEX: Record<string, number> = {
+  tab_routines: 0,
+  tab_explore: 1,
+  tab_history: 2,
+  tab_measures: 3,
+  tab_more: 4,
+};
 
 // ─── Tour Step Configuration ──────────────────────────────────────────────────
 
@@ -92,22 +112,6 @@ const TOUR_STEPS: TourStep[] = [
   },
 ];
 
-// ─── Tab positions (approximate, based on 5 tabs) ────────────────────────────
-
-const TAB_COUNT = 5;
-const TAB_W = SCREEN_W / TAB_COUNT;
-const TAB_BOTTOM = 0;
-const TAB_H = 60;
-
-const TAB_POSITIONS: Record<string, { x: number; y: number; w: number; h: number }> = {
-  tab_routines: { x: 0, y: SCREEN_H - TAB_H, w: TAB_W, h: TAB_H },
-  tab_explore:  { x: TAB_W, y: SCREEN_H - TAB_H, w: TAB_W, h: TAB_H },
-  tab_history:  { x: TAB_W * 2, y: SCREEN_H - TAB_H, w: TAB_W, h: TAB_H },
-  tab_measures: { x: TAB_W * 3, y: SCREEN_H - TAB_H, w: TAB_W, h: TAB_H },
-  tab_more:     { x: TAB_W * 4, y: SCREEN_H - TAB_H, w: TAB_W, h: TAB_H },
-  fab:          { x: SCREEN_W - 76, y: SCREEN_H - 180, w: 60, h: 60 },
-};
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export const GuidedTour: React.FC = () => {
@@ -120,6 +124,7 @@ export const GuidedTour: React.FC = () => {
   })));
 
   const insets = useSafeAreaInsets();
+  const { width: SCREEN_W, height: SCREEN_H } = useWindowDimensions();
   const glowAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
@@ -150,22 +155,45 @@ export const GuidedTour: React.FC = () => {
     return () => pulse.stop();
   }, [tourStep, isTourVisible]);
 
+  // Reveal the matching screen behind the overlay for the current step so the
+  // user sees the real page being described.
+  useEffect(() => {
+    if (!isTourVisible || !step) return;
+    const route = STEP_ROUTE[step.targetArea ?? 'full'];
+    if (route) router.navigate(route as never);
+  }, [tourStep, isTourVisible]);
+
   if (!isTourVisible || !step) return null;
 
-  const targetPos = step.targetArea && step.targetArea !== 'full'
-    ? TAB_POSITIONS[step.targetArea]
-    : null;
+  // Floating tab bar geometry (mirrors app/(tabs)/_layout.tsx).
+  const barBottom = insets.bottom + Spacing.sm;
+  const barTop = SCREEN_H - barBottom - TAB_BAR_HEIGHT;
+  const tabW = (SCREEN_W - Spacing.lg * 2) / 5;
 
-  const tooltipY = step.tooltipPosition === 'top'
-    ? SCREEN_H - TAB_H - 220 - insets.bottom
+  let targetPos: { x: number; y: number; w: number; h: number } | null = null;
+  if (step.targetArea === 'fab') {
+    // Header "+" button on the Routines screen (top-right).
+    targetPos = { x: SCREEN_W - Spacing.xl - 40, y: insets.top + Spacing.lg, w: 40, h: 40 };
+  } else if (step.targetArea && step.targetArea in TAB_INDEX) {
+    const i = TAB_INDEX[step.targetArea];
+    targetPos = { x: Spacing.lg + i * tabW, y: barTop, w: tabW, h: TAB_BAR_HEIGHT };
+  }
+
+  const tooltipY = step.targetArea === 'fab'
+    ? insets.top + 110
+    : step.tooltipPosition === 'top'
+    ? barTop - 240
     : step.tooltipPosition === 'bottom'
-    ? SCREEN_H - TAB_H - 100
-    : SCREEN_H / 2 - 140;
+    ? barTop - 100
+    : SCREEN_H / 2 - 160;
+
+  // Lighter dim on screen-focused steps so the live page shows through.
+  const overlayDim = step.targetArea && step.targetArea !== 'full' ? 0.45 : 0.8;
 
   return (
     <Modal visible transparent animationType="none" statusBarTranslucent>
-      {/* Dark overlay */}
-      <View style={styles.overlay} pointerEvents="box-none">
+      {/* Dimmed overlay — lighter on screen-focused steps so the live page shows */}
+      <View style={[styles.overlay, { backgroundColor: `rgba(0,0,0,${overlayDim})` }]}>
 
         {/* Spotlight highlight on target */}
         {targetPos && (
@@ -257,7 +285,6 @@ export const GuidedTour: React.FC = () => {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.82)',
     position: 'relative',
   },
   spotlight: {

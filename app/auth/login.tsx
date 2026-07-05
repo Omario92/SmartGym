@@ -18,13 +18,14 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import { router } from 'expo-router';
+import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SvgXml } from 'react-native-svg';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
-import { Colors, Spacing, Radius, FontSize, FontFamily } from '@/lib/theme';
+import { Colors, Spacing, Radius, FontSize, FontFamily, Gradients } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { GlowOrb } from '@/components/ui/GlowOrb';
 import { GOOGLE_SVG } from '@/components/ui/designIcons';
@@ -33,7 +34,7 @@ import { useStore } from '@/store';
 
 WebBrowser.maybeCompleteAuthSession();
 
-const GOLD = '#FFD36A';
+const GOLD = Colors.iconPremiumGold;
 
 export default function LoginScreen() {
   const setAuthUser = useStore((s) => s.setAuthUser);
@@ -176,10 +177,11 @@ export default function LoginScreen() {
   return (
     <View style={styles.root}>
       {/* Hero background */}
-      <Image
+      <ExpoImage
         source={require('@/assets/auth/login-background.jpg')}
         style={styles.hero}
-        resizeMode="cover"
+        contentFit="cover"
+        contentPosition="top"
       />
       <LinearGradient
         colors={['rgba(5,6,10,0.1)', 'rgba(5,6,10,0.88)', '#05060a']}
@@ -268,7 +270,11 @@ export default function LoginScreen() {
                     secureTextEntry={!showPassword}
                     autoCapitalize="none"
                   />
-                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ padding: 4 }}>
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    style={{ padding: 4 }}
+                    hitSlop={10}
+                  >
                     <Ionicons
                       name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                       size={18}
@@ -293,17 +299,17 @@ export default function LoginScreen() {
                 {/* Sign In button */}
                 <Pressable style={styles.ctaBtn} onPress={handleEmailLogin} disabled={loading}>
                   <LinearGradient
-                    colors={[Colors.accent, Colors.iconEnergyCyan]}
+                    colors={Gradients.accentButton}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={StyleSheet.absoluteFill}
                   />
                   {loading ? (
-                    <ActivityIndicator size="small" color="#06070D" />
+                    <ActivityIndicator size="small" color={Colors.textOnAccent} />
                   ) : (
                     <>
                       <Text style={styles.ctaText}>Sign In</Text>
-                      <Ionicons name="arrow-forward" size={16} color="#06070D" />
+                      <Ionicons name="arrow-forward" size={16} color={Colors.textOnAccent} />
                     </>
                   )}
                 </Pressable>
@@ -489,7 +495,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     overflow: 'hidden',
   },
-  ctaText: { fontFamily: FontFamily.bodyBold, fontSize: FontSize.lg, color: '#06070D' },
+  ctaText: { fontFamily: FontFamily.bodyBold, fontSize: FontSize.lg, color: Colors.textOnAccent },
 
   divider: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginVertical: Spacing.lg },
   dividerLine: { flex: 1, height: 1 },

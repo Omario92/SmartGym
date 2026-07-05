@@ -21,7 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SvgXml } from 'react-native-svg';
-import { Colors, Spacing, Radius, FontSize, FontFamily, Shadow } from '@/lib/theme';
+import { Colors, Spacing, Radius, FontSize, FontFamily, Gradients, withAlpha, elevate } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -133,7 +133,7 @@ const PremiumCard: React.FC<{ isPremium: boolean; onUpgrade: () => void }> = ({
   return (
     <View style={styles.premiumCard}>
       <LinearGradient
-        colors={['#241238', '#0C2432']}
+        colors={Gradients.aiExplore}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -145,7 +145,7 @@ const PremiumCard: React.FC<{ isPremium: boolean; onUpgrade: () => void }> = ({
             <Text variant="h4" style={{ marginBottom: 4 }}>
               Smart Gym Plus Pro
             </Text>
-            <Text style={{ fontSize: FontSize.sm, lineHeight: 18, color: '#C8C8E0' }}>
+            <Text style={{ fontSize: FontSize.sm, lineHeight: 18, color: Colors.textCoach }}>
               Unlock AI trainer, unlimited routines, advanced analytics &amp; more
             </Text>
           </View>
@@ -168,7 +168,7 @@ const PremiumCard: React.FC<{ isPremium: boolean; onUpgrade: () => void }> = ({
 
         <Pressable style={styles.premiumUpgradeBtn} onPress={onUpgrade}>
           <LinearGradient
-            colors={[Colors.iconPremiumGold, '#F5B942']}
+            colors={Gradients.gold}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={StyleSheet.absoluteFill}
@@ -254,7 +254,7 @@ export default function MoreScreen() {
         <SafeAreaView style={{ flex: 1, backgroundColor: Colors.bgModal }} edges={['top', 'bottom']}>
           <View style={styles.modalHeader}>
             <Text variant="h3">My Custom Exercises</Text>
-            <TouchableOpacity onPress={() => setMyExercisesVisible(false)}>
+            <TouchableOpacity onPress={() => setMyExercisesVisible(false)} hitSlop={10}>
               <Ionicons name="close" size={24} color={Colors.textSecondary} />
             </TouchableOpacity>
           </View>
@@ -318,7 +318,7 @@ export default function MoreScreen() {
             </View>
             <Text style={styles.settingLabel}>Favorite Exercises</Text>
             {favoriteIds.length > 0 ? (
-              <View style={[styles.countBadge, { backgroundColor: Colors.error + '22', borderColor: Colors.error + '44' }]}>
+              <View style={[styles.countBadge, { backgroundColor: withAlpha(Colors.error, 0.13), borderColor: withAlpha(Colors.error, 0.27) }]}>
                 <Text style={{ color: Colors.error, fontSize: FontSize.xs, fontFamily: FontFamily.bodyBold }}>
                   {favoriteIds.length}
                 </Text>
@@ -559,7 +559,11 @@ export default function MoreScreen() {
                   {
                     text: 'Delete Everything',
                     style: 'destructive',
-                    onPress: () => Alert.alert('Done', 'All data has been deleted.'),
+                    onPress: () =>
+                      Alert.alert(
+                        'Not available yet',
+                        'Bulk data deletion isn’t enabled yet. To clear your workout history now, use "Clear all" on the History tab.'
+                      ),
                   },
                 ]
               )
@@ -607,12 +611,8 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,211,106,0.35)',
-    shadowColor: Colors.iconPremiumGold,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.18,
-    shadowRadius: 20,
-    elevation: 6,
+    borderColor: withAlpha(Colors.iconPremiumGold, 0.35),
+    ...elevate(3, Colors.iconPremiumGold),
   },
   premiumContent: { gap: Spacing.sm, padding: Spacing.lg },
   premiumHeader: { flexDirection: 'row', alignItems: 'flex-start' },
@@ -623,7 +623,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
   },
   premiumFeature: {
-    backgroundColor: 'rgba(255,211,106,0.14)',
+    backgroundColor: withAlpha(Colors.iconPremiumGold, 0.14),
     borderRadius: Radius.sm,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 4,
@@ -635,16 +635,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: Spacing.lg,
-    shadowColor: Colors.iconPremiumGold,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 6,
+    ...elevate(3, Colors.iconPremiumGold),
   },
   premiumUpgradeBtnText: {
     fontSize: FontSize.lg,
     fontFamily: FontFamily.bodyBold,
-    color: '#1A1200',
+    color: Colors.textOnAccent,
   },
   premiumDisclaimer: {
     fontSize: FontSize.xs,

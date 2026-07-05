@@ -70,6 +70,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: Colors.bgCard,
     borderRadius: Radius.lg,
+    borderCurve: 'continuous',
     padding: Spacing.lg,
     borderWidth: 1,
     borderColor: Colors.border,

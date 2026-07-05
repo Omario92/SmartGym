@@ -3,6 +3,8 @@
  * Dark-mode premium fitness app theme
  */
 
+import { Platform } from 'react-native';
+
 export const Colors = {
   // Primary neon green accent
   accent: '#00FF9D',
@@ -81,6 +83,48 @@ export const Colors = {
   glassSheenTop: 'rgba(255,255,255,0.10)',
   glassSheenBottom: 'rgba(255,255,255,0.0)',
   glassHighlight: 'rgba(255,255,255,0.22)',
+
+  // ── Semantic aliases (v2.1 UX pass) ──────────────────────────────────────
+  // Prefer these over raw bgCard*/hex in screens so hierarchy stays consistent.
+  surface: '#13131A',        // = bgCard   (default card)
+  surfaceElevated: '#1A1A24', // = bgCard2  (raised / header rows)
+  surfaceHigh: '#1E1E2A',    // = bgCard3  (highest surface / inputs)
+  surfaceSunken: '#0C0E18',  // = iconPanel (recessed panels, search)
+
+  // Text on filled surfaces
+  textOnAccent: '#06070D',   // near-black for neon-green / cyan fills
+  textOnDark: '#FFFFFF',
+  textCoach: '#C8C8E0',      // muted lavender used on AI/coach gradient cards
+
+  // Borders
+  borderSubtle: 'rgba(150,151,190,0.20)', // search fields, week strip, sunken panels
+  borderViolet: 'rgba(139,92,255,0.35)',  // coach / AI card outline
+
+  // Scrims / overlays
+  scrim: 'rgba(0,0,0,0.6)',
+  scrimStrong: 'rgba(0,0,0,0.78)',
+} as const;
+
+/**
+ * Gradient token tuples. Kept separate from `Colors` so they stay typed as
+ * readonly string tuples (LinearGradient's `colors` prop). Always spread or
+ * pass directly, e.g. `colors={Gradients.coach}`.
+ */
+export const Gradients = {
+  /** Coach AI hero card (Routines tab) */
+  coach: ['#2A1A4D', '#0E2A3A'] as const,
+  /** Smart Trainer AI card (Explore tab) */
+  aiExplore: ['#241238', '#0C2432'] as const,
+  /** History overview card */
+  history: ['#1C1330', '#0A1F2B'] as const,
+  /** Violet→cyan pill used for AI CTAs */
+  aiButton: [Colors.iconCinematicViolet, Colors.iconEnergyCyan] as const,
+  /** Neon green→cyan primary CTA (auth, hero actions) */
+  accentButton: [Colors.accent, Colors.iconEnergyCyan] as const,
+  /** Gold premium CTA (upgrade button) */
+  gold: [Colors.iconPremiumGold, '#F5B942'] as const,
+  /** Tab bar background */
+  tabBar: [Colors.bgCard3, Colors.tabBg] as const,
 } as const;
 
 export const Glass = {
@@ -167,4 +211,82 @@ export const Shadow = {
     shadowRadius: 16,
     elevation: 10,
   },
+  /** Soft neutral lift for cards — cheaper than accentGlow, safe on Android */
+  soft: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+} as const;
+
+// ─── Platform-safe helpers (v2.1 UX pass) ────────────────────────────────────
+
+/**
+ * Add alpha to a #RRGGBB hex. Returns an rgba() string.
+ * `withAlpha('#00FF9D', 0.12)` → 'rgba(0,255,157,0.12)'.
+ */
+export function withAlpha(hex: string, alpha: number): string {
+  const h = hex.replace('#', '');
+  const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+/**
+ * Platform-safe elevation. On iOS returns a soft colored shadow; on Android
+ * colored shadows band and are unreliable, so we drop opacity/radius and lean
+ * on `elevation` + the surface's own border instead. Use for cards that should
+ * feel lifted without the heavy glow.
+ */
+export function elevate(
+  level: 1 | 2 | 3 = 2,
+  color: string = '#000'
+): {
+  shadowColor: string;
+  shadowOffset: { width: number; height: number };
+  shadowOpacity: number;
+  shadowRadius: number;
+  elevation: number;
+} {
+  const map = {
+    1: { radius: 4, opacity: 0.18, offset: 1, elevation: 1 },
+    2: { radius: 8, opacity: 0.28, offset: 3, elevation: 3 },
+    3: { radius: 16, opacity: 0.4, offset: 6, elevation: 6 },
+  } as const;
+  const s = map[level];
+  return Platform.select({
+    ios: {
+      shadowColor: color,
+      shadowOffset: { width: 0, height: s.offset },
+      shadowOpacity: s.opacity,
+      shadowRadius: s.radius,
+      elevation: s.elevation,
+    },
+    default: {
+      // Android: neutral shadow only; colored glows band badly.
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: s.offset },
+      shadowOpacity: 0,
+      shadowRadius: 0,
+      elevation: s.elevation,
+    },
+  }) as {
+    shadowColor: string;
+    shadowOffset: { width: number; height: number };
+    shadowOpacity: number;
+    shadowRadius: number;
+    elevation: number;
+  };
+}
+
+/** Screen-level layout constants shared across tabs. */
+export const Layout = {
+  screenPaddingX: Spacing.xl,
+  headerPaddingTop: Spacing.lg,
+  sectionGap: Spacing.xl,
+  minTapTarget: 44,
 } as const;

@@ -35,3 +35,5 @@ node_modules
 # Temp & Screenshot files
 tsconfig.tmp.json
 *.png
+lint-output.txt
+

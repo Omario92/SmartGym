@@ -23,9 +23,10 @@ import { Text } from '@/components/ui/Text';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { ExerciseImage } from '@/components/exercise/ExerciseImage';
 import { CustomExerciseManager } from '@/components/exercise/CustomExerciseManager';
-import { Colors, Spacing, Radius, FontSize, FontFamily, Shadow } from '@/lib/theme';
+import { Colors, Spacing, Radius, FontSize, FontFamily, Shadow, withAlpha } from '@/lib/theme';
 import {
   useStore,
   selectRoutines,
@@ -85,7 +86,7 @@ function ExercisePicker({
         {/* Header */}
         <View style={styles.pickerHeader}>
           <Text variant="h3" color="primary">Add Exercise</Text>
-          <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+          <TouchableOpacity onPress={onClose} style={styles.closeBtn} hitSlop={10}>
             <Ionicons name="close" size={24} color={Colors.textSecondary} />
           </TouchableOpacity>
         </View>
@@ -174,9 +175,9 @@ function ExercisePicker({
             </ScrollView>
 
             {/* Floating create custom FAB */}
-            <TouchableOpacity style={styles.pickerFab} onPress={handleNavigateCreate}>
-              <Ionicons name="add" size={18} color="#000" />
-              <Text style={{ color: '#000', fontFamily: FontFamily.bodyBold, fontSize: FontSize.sm }}>
+            <TouchableOpacity style={styles.pickerFab} onPress={handleNavigateCreate} activeOpacity={0.85}>
+              <Ionicons name="add" size={18} color={Colors.textOnAccent} />
+              <Text style={{ color: Colors.textOnAccent, fontFamily: FontFamily.bodyBold, fontSize: FontSize.sm }}>
                 Create Custom Exercise
               </Text>
             </TouchableOpacity>
@@ -328,15 +329,13 @@ export default function RoutineDetailScreen() {
 
   if (!routine) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <Text variant="body" color="secondary">Routine not found.</Text>
-          <Button
-            title="Go Back"
-            onPress={() => router.back()}
-            style={{ marginTop: 16 }}
-          />
-        </View>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <EmptyState
+          icon="🗂️"
+          title="Routine not found"
+          subtitle="This routine may have been deleted or moved."
+          action={{ label: 'Go Back', onPress: () => router.back() }}
+        />
       </SafeAreaView>
     );
   }
@@ -357,11 +356,12 @@ export default function RoutineDetailScreen() {
             }
           }}
           style={styles.backBtn}
+          hitSlop={10}
         >
           <Ionicons name="chevron-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
         <Text variant="h3" color="primary">Edit Routine</Text>
-        <TouchableOpacity onPress={handleDelete} style={styles.deleteBtn}>
+        <TouchableOpacity onPress={handleDelete} style={styles.deleteBtn} hitSlop={10}>
           <Ionicons name="trash-outline" size={20} color={Colors.error} />
         </TouchableOpacity>
       </View>
@@ -418,7 +418,7 @@ export default function RoutineDetailScreen() {
                 ]}
                 onPress={() => { setColor(c); markDirty(); }}
               >
-                {color === c && <Ionicons name="checkmark" size={14} color="#000" />}
+                {color === c && <Ionicons name="checkmark" size={14} color={Colors.textOnAccent} />}
               </TouchableOpacity>
             ))}
           </View>
@@ -459,7 +459,7 @@ export default function RoutineDetailScreen() {
                       ) : null}
                     </View>
                   </View>
-                  <TouchableOpacity onPress={() => removeExercise(idx)} style={styles.removeBtn}>
+                  <TouchableOpacity onPress={() => removeExercise(idx)} style={styles.removeBtn} hitSlop={10}>
                     <Ionicons name="close-circle" size={20} color={Colors.textMuted} />
                   </TouchableOpacity>
                 </View>
@@ -592,7 +592,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  colorDotSelected: { borderWidth: 3, borderColor: '#fff' },
+  colorDotSelected: { borderWidth: 3, borderColor: Colors.textPrimary },
   exCard: { marginBottom: 10, marginHorizontal: Spacing.md },
   exHeader: {
     flexDirection: 'row',
@@ -676,7 +676,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     marginRight: 8,
   },
-  chipActive: { borderColor: Colors.accent, backgroundColor: Colors.accent + '22' },
+  chipActive: { borderColor: Colors.accent, backgroundColor: withAlpha(Colors.accent, 0.13) },
   exerciseRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -696,17 +696,13 @@ const styles = StyleSheet.create({
     marginHorizontal: Spacing.md,
     marginBottom: Spacing.sm,
     gap: Spacing.sm,
-    shadowColor: Colors.accent,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 8,
+    ...Shadow.soft,
   },
   customBadge: {
-    backgroundColor: 'rgba(0,255,157,0.12)',
+    backgroundColor: withAlpha(Colors.accent, 0.12),
     borderRadius: Radius.full,
     borderWidth: 1,
-    borderColor: 'rgba(0,255,157,0.3)',
+    borderColor: withAlpha(Colors.accent, 0.3),
     paddingHorizontal: Spacing.xs,
     paddingVertical: 2,
   },

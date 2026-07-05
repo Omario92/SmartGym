@@ -18,7 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, Radius, FontSize, FontFamily, Shadow } from '@/lib/theme';
+import { Colors, Spacing, Radius, FontSize, FontFamily, Shadow, withAlpha } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -75,7 +75,7 @@ const ExercisePickerModal: React.FC<{
         {/* Header */}
         <View style={styles.pickerHeader}>
           <Text variant="h4">Add Exercise</Text>
-          <TouchableOpacity onPress={onClose}>
+          <TouchableOpacity onPress={onClose} hitSlop={10}>
             <Ionicons name="close" size={24} color={Colors.textSecondary} />
           </TouchableOpacity>
         </View>
@@ -142,7 +142,7 @@ const ExercisePickerModal: React.FC<{
                 style={[styles.muscleChip, !selectedMuscle && styles.muscleChipActive]}
                 onPress={() => setSelectedMuscle(null)}
               >
-                <Text style={{ fontSize: FontSize.sm, color: !selectedMuscle ? '#000' : Colors.textSecondary }}>
+                <Text style={{ fontSize: FontSize.sm, color: !selectedMuscle ? Colors.textOnAccent : Colors.textSecondary }}>
                   All
                 </Text>
               </TouchableOpacity>
@@ -152,7 +152,7 @@ const ExercisePickerModal: React.FC<{
                   style={[styles.muscleChip, selectedMuscle === m.id && styles.muscleChipActive]}
                   onPress={() => setSelectedMuscle(selectedMuscle === m.id ? null : m.id)}
                 >
-                  <Text style={{ fontSize: FontSize.sm, color: selectedMuscle === m.id ? '#000' : Colors.textSecondary }}>
+                  <Text style={{ fontSize: FontSize.sm, color: selectedMuscle === m.id ? Colors.textOnAccent : Colors.textSecondary }}>
                     {m.icon} {m.label}
                   </Text>
                 </TouchableOpacity>
@@ -163,9 +163,10 @@ const ExercisePickerModal: React.FC<{
             <TouchableOpacity
               style={styles.pickerFab}
               onPress={handleNavigateCreate}
+              activeOpacity={0.85}
             >
-              <Ionicons name="add" size={18} color="#000" />
-              <Text style={{ color: '#000', fontFamily: FontFamily.bodyBold, fontSize: FontSize.sm }}>
+              <Ionicons name="add" size={18} color={Colors.textOnAccent} />
+              <Text style={{ color: Colors.textOnAccent, fontFamily: FontFamily.bodyBold, fontSize: FontSize.sm }}>
                 Create Custom Exercise
               </Text>
             </TouchableOpacity>
@@ -246,7 +247,7 @@ const ExerciseRow: React.FC<{
       <Text semibold style={{ flex: 1 }}>
         {exercise.exerciseName}
       </Text>
-      <TouchableOpacity onPress={() => onRemove(index)}>
+      <TouchableOpacity onPress={() => onRemove(index)} hitSlop={10}>
         <Ionicons name="trash-outline" size={18} color={Colors.error} />
       </TouchableOpacity>
     </View>
@@ -411,7 +412,7 @@ export default function CreateRoutineScreen() {
               ]}
             >
               {selectedColor === color && (
-                <Ionicons name="checkmark" size={16} color="#000" />
+                <Ionicons name="checkmark" size={16} color={Colors.textOnAccent} />
               )}
             </TouchableOpacity>
           ))}
@@ -426,7 +427,7 @@ export default function CreateRoutineScreen() {
             style={styles.addExerciseBtn}
             onPress={() => setShowPicker(true)}
           >
-            <Ionicons name="add" size={18} color="#000" />
+            <Ionicons name="add" size={18} color={Colors.textOnAccent} />
             <Text style={styles.addExerciseBtnText}>Add</Text>
           </TouchableOpacity>
         </View>
@@ -530,10 +531,11 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xs,
     borderRadius: Radius.full,
     gap: 4,
-    ...Shadow.accentGlow,
+    minHeight: 36,
+    ...Shadow.soft,
   },
   addExerciseBtnText: {
-    color: '#000',
+    color: Colors.textOnAccent,
     fontFamily: FontFamily.bodyBold,
     fontSize: FontSize.sm,
   },
@@ -678,13 +680,13 @@ const styles = StyleSheet.create({
     marginHorizontal: Spacing.lg,
     marginBottom: Spacing.sm,
     gap: Spacing.sm,
-    ...Shadow.accentGlow,
+    ...Shadow.soft,
   },
   customBadge: {
-    backgroundColor: 'rgba(0,255,157,0.12)',
+    backgroundColor: withAlpha(Colors.accent, 0.12),
     borderRadius: Radius.full,
     borderWidth: 1,
-    borderColor: 'rgba(0,255,157,0.3)',
+    borderColor: withAlpha(Colors.accent, 0.3),
     paddingHorizontal: Spacing.xs,
     paddingVertical: 2,
   },

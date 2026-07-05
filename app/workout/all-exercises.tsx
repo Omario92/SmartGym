@@ -63,7 +63,6 @@ export default function AllExercisesScreen() {
   );
 
   const filtered = useMemo(() => {
-    console.log('[AllExercises] Filter trigger - allExercises size:', allExercises.length, 'selectedMuscle:', selectedMuscle, 'search:', search);
     return allExercises.filter((e) => {
       const q = search.toLowerCase();
       const matchSearch =
@@ -74,11 +73,7 @@ export default function AllExercisesScreen() {
       const matchMuscle = !selectedMuscle || e.muscleGroup === selectedMuscle;
       const matchDiff = !selectedDifficulty || e.difficulty === selectedDifficulty;
       const matchEquip = !selectedEquipment || e.equipment === selectedEquipment;
-      const res = matchSearch && matchMuscle && matchDiff && matchEquip;
-      if (e.muscleGroup === 'chest') {
-        console.log(`[AllExercises] Checking ${e.name}: matchSearch=${matchSearch}, matchMuscle=${matchMuscle} (e.muscleGroup=${e.muscleGroup}, selectedMuscle=${selectedMuscle}), matchDiff=${matchDiff}, matchEquip=${matchEquip} -> res=${res}`);
-      }
-      return res;
+      return matchSearch && matchMuscle && matchDiff && matchEquip;
     });
   }, [allExercises, search, selectedMuscle, selectedDifficulty, selectedEquipment]);
 
@@ -105,7 +100,7 @@ export default function AllExercisesScreen() {
             autoCorrect={false}
           />
           {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch('')}>
+            <TouchableOpacity onPress={() => setSearch('')} hitSlop={10}>
               <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
             </TouchableOpacity>
           )}
@@ -220,7 +215,7 @@ export default function AllExercisesScreen() {
         <SafeAreaView style={styles.filterModal} edges={['top', 'bottom']}>
           <View style={styles.filterHeader}>
             <Text semibold style={{ fontSize: FontSize.lg }}>Filters</Text>
-            <TouchableOpacity onPress={() => setShowFilters(false)}>
+            <TouchableOpacity onPress={() => setShowFilters(false)} hitSlop={10}>
               <Ionicons name="close" size={24} color={Colors.textSecondary} />
             </TouchableOpacity>
           </View>
@@ -267,7 +262,7 @@ export default function AllExercisesScreen() {
               style={styles.applyBtn}
               onPress={() => setShowFilters(false)}
             >
-              <Text style={{ color: '#000', fontFamily: FontFamily.bodyBold }}>
+              <Text style={{ color: Colors.textOnAccent, fontFamily: FontFamily.bodyBold }}>
                 Show {filtered.length} results
               </Text>
             </TouchableOpacity>
@@ -357,7 +352,7 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.bodyMedium,
   },
   chipTextActive: {
-    color: '#000',
+    color: Colors.textOnAccent,
     fontFamily: FontFamily.bodyBold,
   },
 

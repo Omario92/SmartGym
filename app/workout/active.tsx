@@ -193,16 +193,20 @@ const ExerciseRestModal: React.FC<{
   const [val, setVal] = useState(initialValue.toString());
   
   useEffect(() => {
-    if (visible) setVal(initialValue.toString());
+    if (visible) {
+      queueMicrotask(() => {
+        setVal(initialValue.toString());
+      });
+    }
   }, [visible, initialValue]);
 
   return (
     <Modal visible={visible} transparent animationType="fade">
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' }}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: Colors.scrim, justifyContent: 'center', alignItems: 'center' }}>
         <View style={{ width: 300, backgroundColor: Colors.bgCard, borderRadius: Radius.md, padding: Spacing.lg, borderWidth: 1, borderColor: Colors.border }}>
           <Text variant="h4" style={{ marginBottom: Spacing.md }}>Rest Time (seconds)</Text>
           <TextInput
-            style={{ backgroundColor: Colors.bgInput, color: '#FFF', padding: Spacing.md, borderRadius: Radius.sm, fontSize: 18, textAlign: 'center', borderWidth: 1, borderColor: Colors.border }}
+            style={{ backgroundColor: Colors.bgInput, color: Colors.textPrimary, padding: Spacing.md, borderRadius: Radius.sm, fontSize: 18, textAlign: 'center', borderWidth: 1, borderColor: Colors.border }}
             keyboardType="number-pad"
             value={val}
             onChangeText={setVal}
@@ -260,11 +264,15 @@ export default function ActiveWorkoutScreen() {
   useEffect(() => {
     if (!activeWorkout?.isResting) {
       if (restRef.current) clearInterval(restRef.current);
-      setRestRemaining(activeWorkout?.restSecondsLeft ?? 0);
+      queueMicrotask(() => {
+        setRestRemaining(activeWorkout?.restSecondsLeft ?? 0);
+      });
       return;
     }
 
-    setRestRemaining(activeWorkout.restSecondsLeft);
+    queueMicrotask(() => {
+      setRestRemaining(activeWorkout.restSecondsLeft);
+    });
     restRef.current = setInterval(() => {
       setRestRemaining((prev) => {
         if (prev <= 1) {
@@ -355,7 +363,7 @@ export default function ActiveWorkoutScreen() {
           </View>
           <Button
             title="Finish"
-            variant="primary"
+            variant={completedSets > 0 ? 'primary' : 'secondary'}
             size="sm"
             onPress={handleFinish}
           />
@@ -450,8 +458,12 @@ export default function ActiveWorkoutScreen() {
                           {exercise.restSeconds ?? settings.restTimerDefault}s
                         </Text>
                       </TouchableOpacity>
-                      <TouchableOpacity onPress={() => addSet(eIdx)}>
-                        <Text color="accent" style={{ fontSize: FontSize.sm }}>
+                      <TouchableOpacity
+                        onPress={() => addSet(eIdx)}
+                        hitSlop={10}
+                        style={{ paddingVertical: 4, paddingHorizontal: 4 }}
+                      >
+                        <Text color="accent" style={{ fontSize: FontSize.sm, fontFamily: FontFamily.bodyBold }}>
                           + Set
                         </Text>
                       </TouchableOpacity>
@@ -497,11 +509,12 @@ export default function ActiveWorkoutScreen() {
 
             {/* Finish button at bottom */}
             <Button
-              title="🏁 Finish Workout"
+              title="Finish Workout"
               variant="primary"
               size="lg"
               fullWidth
               onPress={handleFinish}
+              icon={<Ionicons name="flag" size={18} color={Colors.textOnAccent} />}
               style={{ marginTop: Spacing.xl }}
             />
             <Button
@@ -510,7 +523,7 @@ export default function ActiveWorkoutScreen() {
               size="md"
               fullWidth
               onPress={handleCancel}
-              style={{ marginTop: Spacing.sm }}
+              style={{ marginTop: Spacing.xs }}
             />
           </ScrollView>
           <ExerciseRestModal
@@ -590,7 +603,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: Spacing.sm,
     right: Spacing.sm,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: Colors.scrim,
     borderRadius: Radius.full,
     borderWidth: 1,
     borderColor: Colors.accent,

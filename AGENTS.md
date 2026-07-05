@@ -70,6 +70,11 @@ Always import from `lib/theme.ts`. Never hardcode hex values.
 
 ## Recent changes
 ```
+- [v5.7] Lint and Typecheck Fixes & Dependency Alignment:
+  - Resolved all React hook purity issues by moving non-idempotent `Date.now()` calls inside callbacks/handlers to an external helper (`generateSavedId`).
+  - Resolved all `react-hooks/set-state-in-effect` errors by wrapping synchronous React state changes inside `useEffect` in `queueMicrotask`.
+  - Cleared all 7 lint errors across `explore.tsx`, `_layout.tsx`, `[id].tsx`, `active.tsx`, and `AIGeneratorModal.tsx`.
+  - Updated Expo SDK 57 packages (`expo-build-properties`, `expo-image-picker`, `expo-media-library`, `expo-notifications`, and `expo-router`) to their recommended versions using `npx expo install --fix`.
 - [v5.6] Auth Flow & Premium UI Enhancements:
   - Added new Forgot Password screen (`app/auth/forgot-password.tsx`) with Supabase email reset password logic.
   - Premium redesign of Login, Register and Forgot Password screens with nested gradient borders, custom SVGs, and gold branding accents (#FFD36A).

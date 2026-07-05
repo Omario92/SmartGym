@@ -1,9 +1,9 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import Animated, { FadeIn, FadeInDown, ZoomIn } from 'react-native-reanimated';
 import { Colors, Spacing } from '@/lib/theme';
 import { Text } from './Text';
 import { Button } from './Button';
+import { FadeInView } from './FadeInView';
 
 interface EmptyStateProps {
   icon: string;
@@ -16,32 +16,27 @@ interface EmptyStateProps {
 }
 
 export const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, subtitle, action }) => (
-  <Animated.View style={styles.container} entering={FadeIn.duration(400)}>
-    <Animated.Text
-      style={styles.icon}
-      entering={ZoomIn.duration(450).springify().damping(12)}
-    >
-      {icon}
-    </Animated.Text>
-    <Animated.View entering={FadeInDown.duration(400).delay(100)}>
+  <FadeInView style={styles.container}>
+    <Text style={styles.icon}>{icon}</Text>
+    <View>
       <Text variant="h4" center style={styles.title}>
         {title}
       </Text>
       <Text color="secondary" center style={styles.subtitle}>
         {subtitle}
       </Text>
-    </Animated.View>
+    </View>
     {action && (
-      <Animated.View entering={FadeInDown.duration(400).delay(200)}>
+      <View>
         <Button
           title={action.label}
           onPress={action.onPress}
           variant="outline"
           style={styles.action}
         />
-      </Animated.View>
+      </View>
     )}
-  </Animated.View>
+  </FadeInView>
 );
 
 const styles = StyleSheet.create({
