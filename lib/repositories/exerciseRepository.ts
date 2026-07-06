@@ -25,6 +25,7 @@ import {
   fetchExercisesFromCMS,
   fetchExercisesFromSupabase,
   fetchCMSVersion,
+  fetchSupabaseCatalogVersion,
   isCMSConfigured,
   isSupabaseCatalogConfigured,
 } from '@/lib/api/exerciseApi';
@@ -48,6 +49,14 @@ class ExerciseRepository {
       const cached = await getCachedExercises();
 
       if (cached) {
+        // Cheap change-detection: if the remote catalog version differs from
+        // what we cached (e.g. an admin just edited an exercise), refetch NOW so
+        // the update is visible immediately instead of after the 24h TTL.
+        const remoteVersion = await this._remoteVersion();
+        if (remoteVersion && remoteVersion !== cached.version) {
+          return await this._fetchAndCache(remoteVersion);
+        }
+
         const fresh = await isExerciseCacheFresh();
         if (!fresh && !this._isRefreshing) {
           // Background refresh — non-blocking
@@ -61,6 +70,17 @@ class ExerciseRepository {
     } catch {
       // Network unavailable — use offline cache or local fallback
       return await this._offlineFallback();
+    }
+  }
+
+  /** Cheap remote version probe. Returns null on any failure (keeps cache). */
+  private async _remoteVersion(): Promise<string | null> {
+    try {
+      if (isSupabaseCatalogConfigured()) return await fetchSupabaseCatalogVersion();
+      if (isCMSConfigured()) return (await fetchCMSVersion()).version;
+      return null;
+    } catch {
+      return null;
     }
   }
 
@@ -117,19 +137,24 @@ class ExerciseRepository {
 
   // ── Private ──────────────────────────────────────────────────────────────
 
-  private async _fetchAndCache(): Promise<Exercise[]> {
+  private async _fetchAndCache(knownVersion?: string): Promise<Exercise[]> {
     let exercises: Exercise[];
-    let version = '1.0.0';
+    let version = knownVersion ?? '1.0.0';
 
     try {
       if (isSupabaseCatalogConfigured()) {
         // Phase 3: Supabase is primary
         exercises = await fetchExercisesFromSupabase();
+        // Tag the cache with the real catalog version so the next getAll()
+        // version check matches (and only busts when the catalog truly changes).
+        if (!knownVersion) {
+          version = (await fetchSupabaseCatalogVersion()) ?? new Date().toISOString();
+        }
       } else if (isCMSConfigured()) {
         // Phase 2: CMS is primary
         const res = await fetchExercisesFromCMS();
         exercises = res.exercises;
-        version = res.version;
+        version = knownVersion ?? res.version;
       } else {
         // Phase 1: Use local hardcoded data
         exercises = this._mapLocalExercises();

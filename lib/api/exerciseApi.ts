@@ -120,6 +120,36 @@ export async function fetchExercisesFromSupabase(): Promise<Exercise[]> {
 }
 
 /**
+ * Lightweight change-detection tag for the Supabase catalog: `${count}:${latest_updated_at}`.
+ * Changes whenever an active exercise is added, removed, or edited — used to bust the
+ * client cache so admin updates appear on the next app open (no 24h wait).
+ * Returns null on any failure so callers gracefully keep their existing cache.
+ */
+export async function fetchSupabaseCatalogVersion(): Promise<string | null> {
+  if (!SUPABASE_CATALOG_ENABLED) return null;
+  try {
+    const { count, error: countErr } = await supabase
+      .from('catalog_exercises')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_active', true);
+    if (countErr) return null;
+
+    const { data, error } = await supabase
+      .from('catalog_exercises')
+      .select('updated_at')
+      .eq('is_active', true)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) return null;
+
+    return `${count ?? 0}:${data?.updated_at ?? 'none'}`;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Fetch a single exercise from Supabase by ID.
  */
 export async function fetchExerciseByIdFromSupabase(id: string): Promise<Exercise | null> {

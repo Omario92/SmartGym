@@ -108,4 +108,6 @@ export interface AuthUser {
   displayName?: string | null;
   avatarUrl?: string | null;
   provider?: string;
+  /** From profiles.is_admin — gates the Admin Tools UI. */
+  isAdmin?: boolean;
 }

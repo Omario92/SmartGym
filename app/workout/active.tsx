@@ -17,7 +17,13 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import Reanimated, { useAnimatedStyle, withTiming, withSpring } from 'react-native-reanimated';
+import Reanimated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+  withSpring,
+  withSequence,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, Redirect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -122,6 +128,20 @@ const SetRow: React.FC<{
 }> = ({ set, setIndex, exerciseIndex, isActive, onComplete }) => {
   const updateSet = useStore((s) => s.updateSet);
 
+  // Pop the checkmark when a set transitions into "completed".
+  const pop = useSharedValue(1);
+  const prevCompleted = useRef(set.completed);
+  useEffect(() => {
+    if (set.completed && !prevCompleted.current) {
+      pop.value = withSequence(
+        withTiming(1.25, { duration: 110 }),
+        withSpring(1, { damping: 9, stiffness: 220 })
+      );
+    }
+    prevCompleted.current = set.completed;
+  }, [set.completed]);
+  const popStyle = useAnimatedStyle(() => ({ transform: [{ scale: pop.value }] }));
+
   return (
     <View style={[styles.setRow, set.completed && styles.setRowCompleted, isActive && styles.setRowActive]}>
       <View style={styles.setNum}>
@@ -172,11 +192,13 @@ const SetRow: React.FC<{
         onPress={onComplete}
         activeOpacity={0.8}
       >
-        <Ionicons
-          name={set.completed ? 'checkmark' : 'checkmark-outline'}
-          size={20}
-          color={set.completed ? '#000' : Colors.textMuted}
-        />
+        <Reanimated.View style={popStyle}>
+          <Ionicons
+            name={set.completed ? 'checkmark' : 'checkmark-outline'}
+            size={20}
+            color={set.completed ? Colors.textOnAccent : Colors.textMuted}
+          />
+        </Reanimated.View>
       </TouchableOpacity>
     </View>
   );

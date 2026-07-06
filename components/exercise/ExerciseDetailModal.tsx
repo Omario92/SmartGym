@@ -15,12 +15,14 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Radius, FontSize, FontFamily } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { Badge } from '@/components/ui/Badge';
 import { ExerciseImage } from './ExerciseImage';
 import type { Exercise, CustomExercise } from '@/lib/exercises';
+import type { MediaItem } from '@/lib/supabaseTypes';
 import { useStore, selectExercisePRs, getExercise1RMHistory } from '@/store';
 import { LineChart } from '@/components/ui/LineChart';
 
@@ -52,6 +54,26 @@ export const ExerciseDetailModal: React.FC<ExerciseDetailModalProps> = ({
 }) => {
   const prs = useStore(selectExercisePRs);
   const exercisePR = exercise ? prs[exercise.id] : null;
+
+  // Resolve a playable video (Supabase Storage object or a real video file).
+  // Google Drive /view share links are ignored so they fall back to the image.
+  const mediaArr = (exercise as any)?.media as MediaItem[] | undefined;
+  const rawVideo =
+    mediaArr?.find((m) => m.type === 'video')?.url ??
+    (exercise as any)?.videoUrl ??
+    null;
+  const videoUrl =
+    rawVideo &&
+    (/\.(mp4|m4v|mov|webm|m3u8)(\?.*)?$/i.test(rawVideo) ||
+      /\/storage\/v1\/object\/public\//.test(rawVideo))
+      ? rawVideo
+      : null;
+
+  const player = useVideoPlayer(videoUrl, (p) => {
+    p.loop = true;
+    p.muted = true;
+    p.play();
+  });
 
   if (!exercise) return null;
 
@@ -96,13 +118,22 @@ export const ExerciseDetailModal: React.FC<ExerciseDetailModalProps> = ({
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false}>
-          {/* Image */}
-          <ExerciseImage
-            uri={exercise.image}
-            width={SCREEN_W}
-            height={220}
-            borderRadius={0}
-          />
+          {/* Hero media — video when available, else image */}
+          {videoUrl ? (
+            <VideoView
+              player={player}
+              style={styles.heroVideo}
+              contentFit="cover"
+              nativeControls
+            />
+          ) : (
+            <ExerciseImage
+              uri={exercise.image}
+              width={SCREEN_W}
+              height={220}
+              borderRadius={0}
+            />
+          )}
 
           {/* Badges row */}
           <View style={styles.badgeRow}>
@@ -220,6 +251,7 @@ export const ExerciseDetailModal: React.FC<ExerciseDetailModalProps> = ({
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bgModal },
+  heroVideo: { width: SCREEN_W, height: 220, backgroundColor: Colors.bgCard },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

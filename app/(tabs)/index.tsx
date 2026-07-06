@@ -12,7 +12,6 @@ import {
   TouchableOpacity,
   TextInput,
   Pressable,
-  Modal,
   Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -34,6 +33,7 @@ import { Text } from '@/components/ui/Text';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { FadeInView } from '@/components/ui/FadeInView';
+import { PreviewContextMenu } from '@/components/ui/PreviewContextMenu';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { GlassSurface } from '@/components/ui/GlassSurface';
 import { GlowOrb } from '@/components/ui/GlowOrb';
@@ -103,8 +103,19 @@ const RoutineCardBody: React.FC<{
   const accentColor = routine.color || Colors.accent;
   const muscleIcon = muscleIconForRoutine(routine);
 
+  // Long-press "peek": the card brightens (accent glow) + presses in over the
+  // hold, so it visibly lights up before the context menu appears.
+  const press = useSharedValue(0);
+  const cardStyle = useAnimatedStyle(() => ({ transform: [{ scale: 1 - press.value * 0.02 }] }));
+  const glowStyle = useAnimatedStyle(() => ({ opacity: press.value }));
+  const pressIn = () => { press.value = withTiming(1, { duration: 240 }); };
+  const pressOut = () => { press.value = withTiming(0, { duration: 220 }); };
+
   return (
-    <View style={styles.routineCard}>
+    <Animated.View style={[styles.routineCard, !preview && cardStyle]}>
+      {!preview ? (
+        <Animated.View pointerEvents="none" style={[styles.routineGlow, glowStyle]} />
+      ) : null}
       <View style={[styles.routineIconPanel, { backgroundColor: hexToRgba(accentColor, 0.08) }]}>
         <Image source={muscleIcon} style={styles.routineIconImg} resizeMode="contain" />
       </View>
@@ -113,7 +124,9 @@ const RoutineCardBody: React.FC<{
         style={styles.routineContent}
         onPress={onPressBody}
         onLongPress={onLongPress}
-        delayLongPress={280}
+        onPressIn={preview ? undefined : pressIn}
+        onPressOut={preview ? undefined : pressOut}
+        delayLongPress={260}
         disabled={preview}
       >
         <Text style={styles.routineName} numberOfLines={1}>
@@ -132,10 +145,17 @@ const RoutineCardBody: React.FC<{
         </View>
       </Pressable>
 
-      <Pressable style={styles.goBtn} onPress={onStart} hitSlop={8} disabled={preview}>
+      <Pressable
+        style={styles.goBtn}
+        onPress={onStart}
+        onPressIn={preview ? undefined : pressIn}
+        onPressOut={preview ? undefined : pressOut}
+        hitSlop={8}
+        disabled={preview}
+      >
         <Image source={require('@/assets/icons/go-icon.png')} style={styles.goIcon} />
       </Pressable>
-    </View>
+    </Animated.View>
   );
 };
 
@@ -219,16 +239,35 @@ const SwipeableRoutineCard: React.FC<{
 
 // ─── Long-press context menu ───────────────────────────────────────────────────
 
-const MenuRow: React.FC<{
-  icon: IconName;
-  label: string;
-  destructive?: boolean;
-  onPress: () => void;
-}> = ({ icon, label, destructive, onPress }) => (
-  <TouchableOpacity style={styles.menuRow} onPress={onPress} activeOpacity={0.7}>
-    <Ionicons name={icon} size={20} color={destructive ? Colors.error : Colors.textPrimary} />
-    <Text style={[styles.menuLabel, destructive && { color: Colors.error }]}>{label}</Text>
-  </TouchableOpacity>
+const RoutinePreview: React.FC<{ routine: Routine }> = ({ routine }) => (
+  <>
+    <View style={styles.menuPreview} pointerEvents="none">
+      <RoutineCardBody routine={routine} preview />
+    </View>
+
+    {routine.exercises.length > 0 ? (
+      <View style={styles.previewExercises} pointerEvents="none">
+        <Text style={styles.previewExTitle}>
+          {routine.exercises.length} EXERCISE{routine.exercises.length > 1 ? 'S' : ''}
+        </Text>
+        {routine.exercises.slice(0, 5).map((ex, i) => (
+          <View key={`${ex.exerciseId}-${i}`} style={styles.previewExRow}>
+            <View style={styles.previewExDot} />
+            <Text style={styles.previewExName} numberOfLines={1}>
+              {ex.exerciseName}
+            </Text>
+            <Text style={styles.previewExMeta}>
+              {ex.sets} × {ex.reps ?? '—'}
+              {ex.weight ? ` · ${ex.weight}kg` : ''}
+            </Text>
+          </View>
+        ))}
+        {routine.exercises.length > 5 && (
+          <Text style={styles.previewExMore}>+{routine.exercises.length - 5} more</Text>
+        )}
+      </View>
+    ) : null}
+  </>
 );
 
 const RoutineContextMenu: React.FC<{
@@ -240,88 +279,21 @@ const RoutineContextMenu: React.FC<{
   onDuplicate: () => void;
   onArchive: () => void;
   onDelete: () => void;
-}> = ({ routine, haptics, onClose, onStart, onEdit, onDuplicate, onArchive, onDelete }) => {
-  const scale = useSharedValue(0.94);
-  const opacity = useSharedValue(0);
-  const translateY = useSharedValue(14);
-
-  React.useEffect(() => {
-    if (routine) {
-      // Snappy iOS-style "lift + settle" as the menu takes over.
-      scale.value = withSpring(1, { damping: 16, stiffness: 240, mass: 0.6 });
-      translateY.value = withSpring(0, { damping: 16, stiffness: 240, mass: 0.6 });
-      opacity.value = withTiming(1, { duration: 130 });
-    } else {
-      scale.value = 0.94;
-      translateY.value = 14;
-      opacity.value = 0;
-    }
-  }, [routine]);
-
-  const contentStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateY: translateY.value }, { scale: scale.value }],
-  }));
-
-  const run = (fn: () => void) => {
-    if (haptics) {
-      Haptics.selectionAsync().catch(() => {});
-    }
-    onClose();
-    fn();
-  };
-
-  return (
-    <Modal visible={!!routine} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.menuOverlay} onPress={onClose}>
-        {routine ? (
-          <Animated.View style={[styles.menuContent, contentStyle]}>
-            <View style={styles.menuPreview} pointerEvents="none">
-              <RoutineCardBody routine={routine} preview />
-            </View>
-
-            {routine.exercises.length > 0 ? (
-              <View style={styles.previewExercises} pointerEvents="none">
-                <Text style={styles.previewExTitle}>
-                  {routine.exercises.length} EXERCISE{routine.exercises.length > 1 ? 'S' : ''}
-                </Text>
-                {routine.exercises.slice(0, 5).map((ex, i) => (
-                  <View key={`${ex.exerciseId}-${i}`} style={styles.previewExRow}>
-                    <View style={styles.previewExDot} />
-                    <Text style={styles.previewExName} numberOfLines={1}>
-                      {ex.exerciseName}
-                    </Text>
-                    <Text style={styles.previewExMeta}>
-                      {ex.sets} × {ex.reps ?? '—'}
-                      {ex.weight ? ` · ${ex.weight}kg` : ''}
-                    </Text>
-                  </View>
-                ))}
-                {routine.exercises.length > 5 && (
-                  <Text style={styles.previewExMore}>
-                    +{routine.exercises.length - 5} more
-                  </Text>
-                )}
-              </View>
-            ) : null}
-
-            <View style={styles.menuList}>
-              <MenuRow icon="play" label="Start Workout" onPress={() => run(onStart)} />
-              <View style={styles.menuDivider} />
-              <MenuRow icon="create-outline" label="Edit" onPress={() => run(onEdit)} />
-              <View style={styles.menuDivider} />
-              <MenuRow icon="copy-outline" label="Duplicate" onPress={() => run(onDuplicate)} />
-              <View style={styles.menuDivider} />
-              <MenuRow icon="archive-outline" label="Archive" onPress={() => run(onArchive)} />
-              <View style={styles.menuDivider} />
-              <MenuRow icon="trash-outline" label="Delete" destructive onPress={() => run(onDelete)} />
-            </View>
-          </Animated.View>
-        ) : null}
-      </Pressable>
-    </Modal>
-  );
-};
+}> = ({ routine, haptics, onClose, onStart, onEdit, onDuplicate, onArchive, onDelete }) => (
+  <PreviewContextMenu
+    visible={!!routine}
+    haptics={haptics}
+    onClose={onClose}
+    preview={routine ? <RoutinePreview routine={routine} /> : null}
+    actions={[
+      { icon: 'play', label: 'Start Workout', onPress: onStart },
+      { icon: 'create-outline', label: 'Edit', onPress: onEdit },
+      { icon: 'copy-outline', label: 'Duplicate', onPress: onDuplicate },
+      { icon: 'archive-outline', label: 'Archive', onPress: onArchive },
+      { icon: 'trash-outline', label: 'Delete', destructive: true, onPress: onDelete },
+    ]}
+  />
+);
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
@@ -451,7 +423,13 @@ export default function RoutinesScreen() {
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
           />
-          <GlowOrb size={160} color="rgba(0,209,255,0.28)" style={{ top: -60, right: -40 }} />
+          <GlowOrb
+            size={240}
+            color="rgba(0,209,255,0.30)"
+            opacity={0.38}
+            falloff={0.85}
+            style={{ top: -90, right: -60 }}
+          />
 
           <View style={styles.coachTopRow}>
             <SvgXml xml={AI_COACH_SVG} width={52} height={52} />
@@ -764,11 +742,18 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
     minHeight: 132,
     borderRadius: Radius.xl,
+    borderCurve: 'continuous',
     overflow: 'hidden',
     backgroundColor: Colors.iconPanel,
     borderWidth: 1,
     borderColor: Colors.border,
     ...Shadow.card,
+  },
+  routineGlow: {
+    ...StyleSheet.absoluteFill,
+    borderRadius: Radius.xl,
+    // Simple brightness tint (like a button press), not an accent glow.
+    backgroundColor: Colors.glassBgStrong,
   },
   routineIconPanel: {
     width: 64,
@@ -823,16 +808,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xl,
   },
 
-  // Long-press context menu
-  menuOverlay: {
-    flex: 1,
-    backgroundColor: Colors.scrimStrong,
-    justifyContent: 'center',
-    paddingHorizontal: Spacing.xl,
-  },
-  menuContent: {
-    gap: Spacing.md,
-  },
+  // Long-press context menu preview
   menuPreview: {
     borderRadius: Radius.xl,
     ...Shadow.card,
@@ -880,30 +856,5 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.body,
     color: Colors.textMuted,
     marginTop: 2,
-  },
-  menuList: {
-    backgroundColor: Colors.surfaceHigh,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    overflow: 'hidden',
-    ...Shadow.card,
-  },
-  menuRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    paddingHorizontal: Spacing.lg,
-    minHeight: 52,
-  },
-  menuLabel: {
-    fontSize: FontSize.md,
-    fontFamily: FontFamily.bodyMedium,
-    color: Colors.textPrimary,
-  },
-  menuDivider: {
-    height: 1,
-    backgroundColor: Colors.divider,
-    marginLeft: Spacing.lg + 20 + Spacing.md,
   },
 });

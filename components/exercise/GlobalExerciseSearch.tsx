@@ -23,12 +23,12 @@ import { ExerciseCard } from './ExerciseCard';
 import { ExerciseDetailModal } from './ExerciseDetailModal';
 import { useStore, selectCustomExercises } from '@/store';
 import {
-  EXERCISES,
   MUSCLE_GROUPS,
   type Exercise,
   type CustomExercise,
   type MuscleGroup,
 } from '@/lib/exercises';
+import { useCatalogExercises } from '@/lib/hooks/useCatalogExercises';
 
 interface GlobalExerciseSearchProps {
   visible: boolean;
@@ -48,6 +48,7 @@ export const GlobalExerciseSearch: React.FC<GlobalExerciseSearchProps> = ({
   onSelect,
 }) => {
   const customExercises = useStore(selectCustomExercises);
+  const { exercises: catalogExercises } = useCatalogExercises();
 
   const [query, setQuery] = useState('');
   const [muscleFilter, setMuscleFilter] = useState<MuscleGroup | null>(null);
@@ -59,7 +60,7 @@ export const GlobalExerciseSearch: React.FC<GlobalExerciseSearchProps> = ({
     const q = query.toLowerCase();
     const pool: (Exercise | CustomExercise)[] = customOnly
       ? [...customExercises]
-      : [...EXERCISES, ...customExercises];
+      : [...catalogExercises, ...customExercises];
 
     return pool.filter((e) => {
       const matchQ =
@@ -71,7 +72,7 @@ export const GlobalExerciseSearch: React.FC<GlobalExerciseSearchProps> = ({
       const matchDiff = !diffFilter || e.difficulty === diffFilter;
       return matchQ && matchMuscle && matchDiff;
     });
-  }, [query, muscleFilter, diffFilter, customOnly, customExercises]);
+  }, [query, muscleFilter, diffFilter, customOnly, customExercises, catalogExercises]);
 
   const activeFilters =
     (muscleFilter ? 1 : 0) + (diffFilter ? 1 : 0) + (customOnly ? 1 : 0);

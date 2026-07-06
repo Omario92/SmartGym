@@ -7,7 +7,8 @@ import {
   View, ScrollView, StyleSheet, TouchableOpacity,
   Dimensions, Alert, Modal, Animated,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { TAB_BAR_HEIGHT } from './_layout';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Reanimated, {
   useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS,
@@ -226,6 +227,7 @@ const AWARDS = [
 type Period = 'week' | 'month' | 'year';
 
 export default function HistoryScreen() {
+  const insets = useSafeAreaInsets();
   const sessions = useStore((s) => s.sessions);
   const routines = useStore((s) => s.routines);
   const deleteSession = useStore((s) => s.deleteSession);
@@ -321,7 +323,14 @@ export default function HistoryScreen() {
         ))}
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + TAB_BAR_HEIGHT + Spacing.xxxl },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Overview */}
         <View style={styles.overviewCard}>
           <LinearGradient
@@ -330,7 +339,13 @@ export default function HistoryScreen() {
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
           />
-          <GlowOrb size={150} color="rgba(0,209,255,0.22)" style={{ top: -50, right: -40 }} />
+          <GlowOrb
+            size={240}
+            color="rgba(0,209,255,0.30)"
+            opacity={0.38}
+            falloff={0.85}
+            style={{ top: -90, right: -60 }}
+          />
           <View style={styles.overviewTop}>
             <ProgressRing size={86} strokeWidth={8} progress={progress}
               color={Colors.iconActive} bgColor="rgba(255,255,255,0.08)">

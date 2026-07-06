@@ -10,14 +10,18 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SvgXml } from 'react-native-svg';
 import { Colors, Spacing, Radius, FontSize, FontFamily, Shadow, Gradients, withAlpha } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { Badge } from '@/components/ui/Badge';
+import Reanimated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { LoadingState } from '@/components/ui/LoadingState';
+import { FadeInView } from '@/components/ui/FadeInView';
+import { PreviewContextMenu } from '@/components/ui/PreviewContextMenu';
 import { GlowOrb } from '@/components/ui/GlowOrb';
 import { TAB_BAR_HEIGHT } from './_layout';
 import { AI_COACH_SVG } from '@/components/ui/designIcons';
@@ -218,15 +222,73 @@ function generateSavedId(id: string): string {
   return `saved_${id}_${Date.now()}`;
 }
 
+// ─── Program long-press: glow + shared context menu ──────────────────────────
+
+type ProgramLike = Routine | typeof FEATURED_PROGRAMS[0];
+const progName = (p: any) => p.title || p.name;
+const progDesc = (p: any): string => p.description;
+const progDuration = (p: any) => p.duration || p.estimatedDuration;
+const progExCount = (p: any) => (Array.isArray(p.exercises) ? p.exercises.length : p.exercises);
+const progEmoji = (p: any) => p.emoji || '💪';
+
+/** Wraps a program card with press-in glow + long-press to open the menu. */
+const ProgramPressable: React.FC<{
+  onPress: () => void;
+  onLongPress: () => void;
+  style?: any;
+  children: React.ReactNode;
+}> = ({ onPress, onLongPress, style, children }) => {
+  const press = useSharedValue(0);
+  const scaleStyle = useAnimatedStyle(() => ({ transform: [{ scale: 1 - press.value * 0.02 }] }));
+  const glowStyle = useAnimatedStyle(() => ({ opacity: press.value }));
+  return (
+    <Reanimated.View style={[scaleStyle, style]}>
+      <Pressable
+        onPress={onPress}
+        onLongPress={onLongPress}
+        delayLongPress={260}
+        onPressIn={() => { press.value = withTiming(1, { duration: 240 }); }}
+        onPressOut={() => { press.value = withTiming(0, { duration: 220 }); }}
+      >
+        {children}
+        <Reanimated.View pointerEvents="none" style={[styles.programGlow, glowStyle]} />
+      </Pressable>
+    </Reanimated.View>
+  );
+};
+
+const ExploreProgramPreview: React.FC<{ program: ProgramLike }> = ({ program }) => (
+  <View style={styles.menuPreviewCard}>
+    <View style={styles.previewTitleRow}>
+      <Text style={{ fontSize: 24 }}>{progEmoji(program)}</Text>
+      <Text variant="h4" style={{ flex: 1 }} numberOfLines={1}>{progName(program)}</Text>
+    </View>
+    {progDesc(program) ? (
+      <Text color="secondary" numberOfLines={2} style={styles.previewDesc}>
+        {progDesc(program)}
+      </Text>
+    ) : null}
+    <View style={styles.programStats}>
+      <View style={styles.programStat}>
+        <Ionicons name="time-outline" size={14} color={Colors.textMuted} />
+        <Text color="muted" style={{ fontSize: FontSize.xs, marginLeft: 4 }}>{progDuration(program)} min</Text>
+      </View>
+      <View style={styles.programStat}>
+        <Ionicons name="barbell-outline" size={14} color={Colors.textMuted} />
+        <Text color="muted" style={{ fontSize: FontSize.xs, marginLeft: 4 }}>{progExCount(program)} exercises</Text>
+      </View>
+    </View>
+  </View>
+);
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 const ProgramCard: React.FC<{
   program: typeof FEATURED_PROGRAMS[0];
-  saved: boolean;
   onStart: () => void;
-  onSave: () => void;
-}> = ({ program, saved, onStart, onSave }) => (
-  <TouchableOpacity onPress={onStart} activeOpacity={0.85} style={styles.programCardVertical}>
+  onOpenMenu: () => void;
+}> = ({ program, onStart, onOpenMenu }) => (
+  <ProgramPressable onPress={onOpenMenu} onLongPress={onOpenMenu} style={styles.programCardVertical}>
     <View style={[styles.programCardBg, { borderColor: program.color + '33' }]}>
       <View style={styles.programCardContent}>
         <View style={styles.programCardHeaderRow}>
@@ -263,14 +325,14 @@ const ProgramCard: React.FC<{
           <TouchableOpacity
             style={[styles.programStartBtn, { backgroundColor: program.color, flex: 1 }]}
             onPress={onStart} activeOpacity={0.8}>
-            <Text style={{ color: '#000', fontFamily: FontFamily.bodyBold, fontSize: FontSize.md }}>
+            <Text style={{ color: Colors.textOnAccent, fontFamily: FontFamily.bodyBold, fontSize: FontSize.md }}>
               Start
             </Text>
           </TouchableOpacity>
         </View>
       </View>
     </View>
-  </TouchableOpacity>
+  </ProgramPressable>
 );
 
 const CategoryChip: React.FC<{
@@ -305,9 +367,10 @@ export default function ExploreScreen() {
   const addRoutine = useStore((s) => s.addRoutine);
   const startWorkout = useStore((s) => s.startWorkout);
   const customExercises = useStore(selectCustomExercises);
+  const hapticsEnabled = useStore((s) => s.settings.hapticFeedback);
   const { show: showToast, ToastComponent } = useToast();
 
-  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const [menuProgram, setMenuProgram] = useState<ProgramLike | null>(null);
   const [searchVisible, setSearchVisible] = useState(false);
   const [aiModalVisible, setAiModalVisible] = useState(false);
   const [dynamicPrograms, setDynamicPrograms] = useState<Routine[]>([]);
@@ -355,32 +418,22 @@ export default function ExploreScreen() {
       ...routine,
       id: generateSavedId(routine.id), // Ensure unique ID for saved copy
     });
-    setSavedIds((prev) => new Set(prev).add(program.id));
     showToast(`✅ "${routine.name}" saved to Routines!`);
   };
 
-  const handleStartProgram = (program: any) => {
-    const title = program.title || program.name;
-    const desc = program.description;
-    const dur = program.duration || program.estimatedDuration;
-    
-    Alert.alert(title, `${desc}\n\nDuration: ${dur} min`, [
-      { 
-        text: 'Start Now', 
-        onPress: () => {
-          const routine = Array.isArray((program as any).exercises)
-            ? (program as Routine)
-            : programToRoutine(program as typeof FEATURED_PROGRAMS[0]);
-          startWorkout(routine);
-          router.push('/workout/active');
-        } 
-      },
-      {
-        text: 'Save to Routines',
-        onPress: () => handleSaveToRoutines(program),
-      },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+  const startProgramNow = (program: ProgramLike) => {
+    const routine = Array.isArray((program as any).exercises)
+      ? (program as Routine)
+      : programToRoutine(program as typeof FEATURED_PROGRAMS[0]);
+    startWorkout(routine);
+    router.push('/workout/active');
+  };
+
+  const openProgramMenu = (program: ProgramLike) => {
+    if (hapticsEnabled) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    }
+    setMenuProgram(program);
   };
 
   const handleStartQuickWorkout = (w: typeof QUICK_WORKOUTS[0]) => {
@@ -452,7 +505,13 @@ export default function ExploreScreen() {
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
           />
-          <GlowOrb size={150} color="rgba(0,209,255,0.25)" style={{ top: -50, right: -40 }} />
+          <GlowOrb
+            size={240}
+            color="rgba(0,209,255,0.30)"
+            opacity={0.38}
+            falloff={0.85}
+            style={{ top: -90, right: -60 }}
+          />
           <View style={styles.aiCardInner}>
             <View style={{ flex: 1 }}>
               <View style={styles.aiHeader}>
@@ -592,11 +651,11 @@ export default function ExploreScreen() {
           {loading && dynamicPrograms.length === 0 ? (
             <LoadingState label="Loading programs…" minHeight={180} />
           ) : dynamicPrograms.length > 0 ? (
-            dynamicPrograms.map((p) => (
-              <TouchableOpacity 
-                key={p.id} 
-                onPress={() => handleStartProgram(p)} 
-                activeOpacity={0.85} 
+            dynamicPrograms.map((p, i) => (
+              <FadeInView key={p.id} delay={Math.min(i, 6) * 60}>
+              <ProgramPressable
+                onPress={() => openProgramMenu(p)}
+                onLongPress={() => openProgramMenu(p)}
                 style={styles.programCardVertical}
               >
                 <View style={[styles.programCardBg, { borderColor: (p.color || Colors.accent) + '33' }]}>
@@ -627,25 +686,26 @@ export default function ExploreScreen() {
                     <View style={styles.programActions}>
                       <TouchableOpacity
                         style={[styles.programStartBtn, { backgroundColor: p.color || Colors.accent, flex: 1 }]}
-                        onPress={() => handleStartProgram(p)} activeOpacity={0.8}>
-                        <Text style={{ color: '#000', fontFamily: FontFamily.bodyBold, fontSize: FontSize.md }}>
+                        onPress={() => startProgramNow(p)} activeOpacity={0.8}>
+                        <Text style={{ color: Colors.textOnAccent, fontFamily: FontFamily.bodyBold, fontSize: FontSize.md }}>
                           Start
                         </Text>
                       </TouchableOpacity>
                     </View>
                   </View>
                 </View>
-              </TouchableOpacity>
+              </ProgramPressable>
+              </FadeInView>
             ))
           ) : (
-            FEATURED_PROGRAMS.map((p) => (
-              <ProgramCard
-                key={p.id}
-                program={p}
-                saved={savedIds.has(p.id)}
-                onStart={() => handleStartProgram(p)}
-                onSave={() => handleSaveToRoutines(p)}
-              />
+            FEATURED_PROGRAMS.map((p, i) => (
+              <FadeInView key={p.id} delay={Math.min(i, 6) * 60}>
+                <ProgramCard
+                  program={p}
+                  onStart={() => startProgramNow(p)}
+                  onOpenMenu={() => openProgramMenu(p)}
+                />
+              </FadeInView>
             ))
           )}
         </View>
@@ -674,16 +734,37 @@ export default function ExploreScreen() {
           style={styles.sectionHeader}
         />
         <View style={styles.categoriesGrid}>
-          {categoriesWithCount.map((cat) => (
-            <CategoryChip
-              key={cat.id}
-              cat={cat}
-              onPress={() => router.push({ pathname: '/workout/all-exercises', params: { muscle: cat.id } })}
-            />
+          {categoriesWithCount.map((cat, i) => (
+            <FadeInView key={cat.id} delay={Math.min(i, 8) * 40} distance={8}>
+              <CategoryChip
+                cat={cat}
+                onPress={() => router.push({ pathname: '/workout/all-exercises', params: { muscle: cat.id } })}
+              />
+            </FadeInView>
           ))}
         </View>
 
       </ScrollView>
+
+      {/* Program long-press context menu */}
+      <PreviewContextMenu
+        visible={!!menuProgram}
+        haptics={hapticsEnabled}
+        onClose={() => setMenuProgram(null)}
+        preview={menuProgram ? <ExploreProgramPreview program={menuProgram} /> : null}
+        actions={
+          menuProgram
+            ? [
+                { icon: 'play', label: 'Start Now', onPress: () => startProgramNow(menuProgram) },
+                {
+                  icon: 'bookmark-outline',
+                  label: 'Save to Routines',
+                  onPress: () => handleSaveToRoutines(menuProgram),
+                },
+              ]
+            : []
+        }
+      />
 
       {/* Toast */}
       <ToastComponent />
@@ -751,8 +832,34 @@ const styles = StyleSheet.create({
   verticalListContainer: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.sm },
   programCardVertical: { width: '100%', marginBottom: Spacing.md },
   programCardBg: {
-    backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
+    backgroundColor: Colors.bgCard, borderRadius: Radius.lg, borderCurve: 'continuous',
     borderWidth: 1, overflow: 'hidden', ...Shadow.card,
+  },
+  programGlow: {
+    ...StyleSheet.absoluteFill,
+    borderRadius: Radius.lg,
+    // Simple brightness tint (like a button press), not an accent glow.
+    backgroundColor: Colors.glassBgStrong,
+  },
+  menuPreviewCard: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: Radius.lg,
+    borderCurve: 'continuous',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.lg,
+    ...Shadow.card,
+  },
+  previewTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.xs,
+  },
+  previewDesc: {
+    fontSize: FontSize.sm,
+    lineHeight: 20,
+    marginBottom: Spacing.md,
   },
   programCardHeaderRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

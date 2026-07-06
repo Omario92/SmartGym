@@ -84,6 +84,67 @@ export async function fetchUserRoutinesSince(
   return (data ?? []).map(mapSupabaseRowToRoutine);
 }
 
+// ─── Supabase — routine templates (Explore programs) ──────────────────────────
+
+/**
+ * Fetch active public routine templates (Explore programs) from Supabase,
+ * mapped to the same Routine shape the app already uses (source: 'explore').
+ * Read-only globals — the user clones one into their own `routines` on save/start.
+ */
+export async function fetchRoutineTemplatesFromSupabase(): Promise<Routine[]> {
+  const { data, error } = await supabase
+    .from('routine_templates')
+    .select(`
+      id, slug, name, description, color, category, difficulty,
+      estimated_duration, image_url, sort_order, created_at, updated_at,
+      routine_template_exercises (
+        id, exercise_id, exercise_name, display_order,
+        sets, reps, weight, rest_seconds, note
+      )
+    `)
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true });
+
+  if (error) throw new Error(`Supabase templates fetch failed: ${error.message}`);
+  return (data ?? []).map(mapTemplateRowToRoutine);
+}
+
+function mapTemplateRowToRoutine(row: Record<string, any>): Routine {
+  const exercises = (row.routine_template_exercises ?? [])
+    .sort((a: any, b: any) => a.display_order - b.display_order)
+    .map((ex: any) => ({
+      id: ex.id,
+      exerciseId: ex.exercise_id,
+      exerciseName: ex.exercise_name,
+      order: ex.display_order ?? 0,
+      sets: ex.sets ?? 3,
+      reps: ex.reps ?? undefined,
+      weight: ex.weight ?? undefined,
+      restSeconds: ex.rest_seconds ?? undefined,
+      note: ex.note ?? undefined,
+    }));
+
+  return {
+    // Distinct, stable id so cloning always produces a fresh user routine id.
+    id: `template_${row.slug}`,
+    name: row.name,
+    description: row.description ?? undefined,
+    color: row.color ?? '#00FF9D',
+    category: row.category ?? undefined,
+    estimatedDuration: row.estimated_duration ?? undefined,
+    difficulty: row.difficulty ?? undefined,
+    source: 'explore' as Routine['source'],
+    exercises,
+    imageUrl: row.image_url ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    lastPerformed: undefined,
+    deletedAt: null,
+    cloudId: undefined,
+    syncStatus: 'synced',
+  };
+}
+
 // ─── Row mapper ───────────────────────────────────────────────────────────────
 
 function mapSupabaseRowToRoutine(row: Record<string, any>): Routine {

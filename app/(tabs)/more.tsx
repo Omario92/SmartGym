@@ -16,7 +16,8 @@ import {
   Modal,
   Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { TAB_BAR_HEIGHT } from './_layout';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,6 +25,7 @@ import { SvgXml } from 'react-native-svg';
 import { Colors, Spacing, Radius, FontSize, FontFamily, Gradients, withAlpha, elevate } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { Card } from '@/components/ui/Card';
+import { GradientCard } from '@/components/ui/GradientCard';
 import { Badge } from '@/components/ui/Badge';
 import { PREMIUM_SVG, FAVORITE_SVG } from '@/components/ui/designIcons';
 import { CustomExerciseManager } from '@/components/exercise/CustomExerciseManager';
@@ -31,6 +33,10 @@ import { GlobalExerciseSearch } from '@/components/exercise/GlobalExerciseSearch
 import { useStore, selectCustomExercises, selectFavoriteIds } from '@/store';
 import { supabase } from '@/lib/supabase';
 import { HealthSyncCard } from '@/components/health/HealthSyncCard';
+import { isAdminEmail } from '@/lib/admin';
+import { exerciseRepository } from '@/lib/repositories/exerciseRepository';
+import { routineRepository } from '@/lib/repositories/routineRepository';
+import { cacheInvalidateAll } from '@/lib/cache/cacheManager';
 
 // ─── Row Components ───────────────────────────────────────────────────────────
 
@@ -113,7 +119,7 @@ const PremiumCard: React.FC<{ isPremium: boolean; onUpgrade: () => void }> = ({
 }) => {
   if (isPremium) {
     return (
-      <Card style={styles.premiumActiveCard} glowing>
+      <GradientCard style={styles.premiumActiveCard}>
         <View style={styles.premiumInner}>
           <Text style={{ fontSize: 36 }}>⭐</Text>
           <View style={{ flex: 1, marginLeft: Spacing.md }}>
@@ -126,7 +132,7 @@ const PremiumCard: React.FC<{ isPremium: boolean; onUpgrade: () => void }> = ({
           </View>
           <Badge label="ACTIVE" variant="accent" />
         </View>
-      </Card>
+      </GradientCard>
     );
   }
 
@@ -186,6 +192,7 @@ const PremiumCard: React.FC<{ isPremium: boolean; onUpgrade: () => void }> = ({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function MoreScreen() {
+  const insets = useSafeAreaInsets();
   const settings = useStore(s => s.settings);
   const updateSettings = useStore(s => s.updateSettings);
   const updateOneRmFormula = useStore(s => s.updateOneRmFormula);
@@ -197,6 +204,10 @@ export default function MoreScreen() {
 
   const [myExercisesVisible, setMyExercisesVisible] = useState(false);
   const [favSearchVisible, setFavSearchVisible] = useState(false);
+  const [adminBusy, setAdminBusy] = useState(false);
+
+  // Prefer the server-controlled profiles.is_admin flag; fall back to the env allowlist.
+  const isAdmin = !!authUser?.isAdmin || isAdminEmail(authUser?.email);
 
   const handleUpgrade = () => {
     Alert.alert(
@@ -236,6 +247,51 @@ export default function MoreScreen() {
         },
       },
     ]);
+  };
+
+  // ── Admin tools ───────────────────────────────────────────────────────────
+  const handleRefreshCatalog = async () => {
+    if (adminBusy) return;
+    setAdminBusy(true);
+    try {
+      const list = await exerciseRepository.refresh();
+      Alert.alert('Catalog refreshed', `${list.length} exercises loaded from the server.`);
+    } catch (e) {
+      Alert.alert('Refresh failed', e instanceof Error ? e.message : 'Could not refresh the catalog.');
+    } finally {
+      setAdminBusy(false);
+    }
+  };
+
+  const handleRefreshExplore = async () => {
+    if (adminBusy) return;
+    setAdminBusy(true);
+    try {
+      const list = await routineRepository.refresh();
+      Alert.alert('Explore refreshed', `${list.length} programs loaded from the server.`);
+    } catch (e) {
+      Alert.alert('Refresh failed', e instanceof Error ? e.message : 'Could not refresh Explore programs.');
+    } finally {
+      setAdminBusy(false);
+    }
+  };
+
+  const handleClearCaches = () => {
+    Alert.alert(
+      'Clear all caches?',
+      'Removes cached exercises, routines and Explore data. They re-download on next open. User data is untouched.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: async () => {
+            await cacheInvalidateAll();
+            Alert.alert('Done', 'All caches cleared.');
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -280,7 +336,10 @@ export default function MoreScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + TAB_BAR_HEIGHT + Spacing.xxxl },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {/* Premium Card */}
@@ -570,6 +629,51 @@ export default function MoreScreen() {
             }
           />
         </Card>
+
+        {/* Admin Tools — visible only to allow-listed admin accounts */}
+        {isAdmin && (
+          <>
+            <SectionHeader title="Admin Tools" />
+            <Card style={styles.section} noPadding>
+              <SettingRow
+                icon="🔄"
+                label="Refresh Exercise Catalog"
+                value={adminBusy ? 'Working…' : undefined}
+                onPress={handleRefreshCatalog}
+              />
+              <View style={styles.divider} />
+              <SettingRow
+                icon="🧭"
+                label="Refresh Explore Programs"
+                value={adminBusy ? 'Working…' : undefined}
+                onPress={handleRefreshExplore}
+              />
+              <View style={styles.divider} />
+              <SettingRow
+                icon="🧹"
+                label="Clear All Caches"
+                destructive
+                onPress={handleClearCaches}
+              />
+              <View style={styles.divider} />
+              <SettingRow
+                icon="⭐"
+                label="Premium Mode"
+                badge="ADVANCED"
+                badgeVariant="premium"
+                toggle
+                toggleValue={settings.isPremium}
+                onToggle={(v) => updateSettings({ isPremium: v })}
+              />
+              <View style={styles.divider} />
+              <SettingRow
+                icon="🤖"
+                label="AI Smart Trainer"
+                value={settings.geminiApiKey ? 'Enabled' : 'No API key'}
+              />
+            </Card>
+          </>
+        )}
 
         {/* App info */}
         <View style={styles.appInfo}>

@@ -70,6 +70,16 @@ Always import from `lib/theme.ts`. Never hardcode hex values.
 
 ## Recent changes
 ```
+- [v5.9] TypeScript Typecheck Alignment:
+  - Resolved `StyleSheet.absoluteFillObject` references to `StyleSheet.absoluteFill` in `app/(tabs)/explore.tsx`, `app/(tabs)/index.tsx`, and `components/ui/GlassTabBar.tsx` for React Native 0.86 compatibility.
+  - Fixed type error in `app/_layout.tsx` where Supabase query returns a `PromiseLike` without `.catch` by migrating from `.then().catch()` to the standard two-argument `.then(onfulfilled, onrejected)` form.
+  - Verified successful compilation under TypeScript strict check using `npm run typecheck` with zero remaining errors.
+- [v5.8] Admin Dashboard Web Panel:
+  - Created standalone React + TypeScript + Vite web app under `apps/admin` for Exercise Catalog and Routine Template administration.
+  - Implemented secure Supabase Auth login, stats overview, listing tables with CSV/JSON import/export, and settings pages.
+  - Built interactive Drag-and-drop Routine Builder supporting Flat Workouts and Multi-Day Programs with dynamic parameters (tempo, RPE, rest, reps, sets).
+  - Created Supabase migration `006_admin_dashboard.sql` defining new database structures and secure admin-only RLS write policies.
+  - Resolved all TypeScript strict check warnings and completed build verification with clean linter status.
 - [v5.7] Lint and Typecheck Fixes & Dependency Alignment:
   - Resolved all React hook purity issues by moving non-idempotent `Date.now()` calls inside callbacks/handlers to an external helper (`generateSavedId`).
   - Resolved all `react-hooks/set-state-in-effect` errors by wrapping synchronous React state changes inside `useEffect` in `queueMicrotask`.

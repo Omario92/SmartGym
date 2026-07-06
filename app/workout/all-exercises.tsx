@@ -25,12 +25,12 @@ import { ExerciseImage } from '@/components/exercise/ExerciseImage';
 import { ExerciseDetailModal } from '@/components/exercise/ExerciseDetailModal';
 import { useStore, selectCustomExercises } from '@/store';
 import {
-  EXERCISES,
   MUSCLE_GROUPS,
   type Exercise,
   type MuscleGroup,
   type CustomExercise,
 } from '@/lib/exercises';
+import { useCatalogExercises } from '@/lib/hooks/useCatalogExercises';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const CARD_W = (SCREEN_W - Spacing.lg * 2 - Spacing.md) / 2;
@@ -57,9 +57,10 @@ export default function AllExercisesScreen() {
   const [showFilters, setShowFilters] = useState(false);
   const [detailExercise, setDetailExercise] = useState<Exercise | null>(null);
 
+  const { exercises: catalogExercises } = useCatalogExercises();
   const allExercises: Exercise[] = useMemo(
-    () => [...EXERCISES, ...customExercises],
-    [customExercises]
+    () => [...catalogExercises, ...customExercises],
+    [catalogExercises, customExercises]
   );
 
   const filtered = useMemo(() => {

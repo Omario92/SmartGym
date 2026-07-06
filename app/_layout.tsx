@@ -75,13 +75,24 @@ export default function RootLayout() {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        setAuthUser({
+        const base = {
           id: session.user.id,
           email: session.user.email ?? null,
           displayName: session.user.user_metadata?.full_name ?? null,
           avatarUrl: session.user.user_metadata?.avatar_url ?? null,
           provider: session.user.app_metadata?.provider ?? 'email',
-        });
+        };
+        setAuthUser(base);
+        // Load the admin flag from the profile (RLS: users can read their own row).
+        supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', session.user.id)
+          .maybeSingle()
+          .then(
+            ({ data }) => setAuthUser({ ...base, isAdmin: data?.is_admin ?? false }),
+            () => {}
+          );
       } else {
         clearAuthUser();
       }
@@ -119,7 +130,7 @@ export default function RootLayout() {
         <SafeAreaProvider>
           <StatusBar style="light" />
           <SyncProvider>
-            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.bg } }}>
+            <Stack screenOptions={{ headerShown: false, gestureEnabled: true, contentStyle: { backgroundColor: Colors.bg } }}>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="auth" options={{ headerShown: false }} />
             <Stack.Screen
@@ -153,11 +164,17 @@ export default function RootLayout() {
                 headerStyle: { backgroundColor: Colors.bgCard },
                 headerTintColor: Colors.textPrimary,
                 headerTitleStyle: { color: Colors.textPrimary, fontFamily: FontFamily.display },
+                animation: 'slide_from_right',
               }}
             />
             <Stack.Screen
               name="workout/active"
-              options={{ headerShown: false, presentation: 'fullScreenModal' }}
+              options={{
+                headerShown: false,
+                presentation: 'fullScreenModal',
+                animation: 'slide_from_bottom',
+                gestureEnabled: false,
+              }}
             />
             <Stack.Screen
               name="routine/add-custom-exercise"

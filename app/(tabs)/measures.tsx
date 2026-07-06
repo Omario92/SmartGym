@@ -14,8 +14,9 @@ import {
   Platform,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { TAB_BAR_HEIGHT } from './_layout';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Svg, { Polyline, Line, Circle, SvgXml } from 'react-native-svg';
@@ -24,6 +25,8 @@ import Reanimated, { useAnimatedStyle, withSpring, useSharedValue, runOnJS } fro
 import { Colors, Spacing, Radius, FontSize, FontFamily, withAlpha } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { Card } from '@/components/ui/Card';
+import { GradientCard } from '@/components/ui/GradientCard';
+import { GlassSurface } from '@/components/ui/GlassSurface';
 import { Button } from '@/components/ui/Button';
 import { FadeInView } from '@/components/ui/FadeInView';
 import { EMPTY_STATE_SVG } from '@/components/ui/designIcons';
@@ -317,6 +320,7 @@ const MeasureRow: React.FC<{
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function MeasuresScreen() {
+  const insets = useSafeAreaInsets();
   const measures = useStore(s => s.measures);
   const addMeasure = useStore(s => s.addMeasure);
   const deleteMeasure = useStore(s => s.deleteMeasure);
@@ -345,14 +349,23 @@ export default function MeasuresScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text variant="h2">Measures</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={() => setShowModal(true)}>
+        <GlassSurface
+          radius={20}
+          accent
+          strong
+          onPress={() => setShowModal(true)}
+          style={styles.addBtn}
+        >
           <Ionicons name="add" size={22} color={Colors.accent} />
-        </TouchableOpacity>
+        </GlassSurface>
       </View>
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + TAB_BAR_HEIGHT + Spacing.xxxl },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {!hasData ? (
@@ -410,17 +423,11 @@ export default function MeasuresScreen() {
                   year: 'numeric',
                 })}
               </Text>
-              <Button
-                title="+ Add"
-                variant="outline"
-                size="sm"
-                onPress={() => setShowModal(true)}
-              />
             </View>
 
             {/* Weight trend card */}
             {weightSeries.length > 0 && (
-              <Card style={styles.weightCard} glowing>
+              <GradientCard style={styles.weightCard}>
                 <View style={styles.weightHeader}>
                   <Text semibold>Weight</Text>
                   <Text variant="h3" color="accent">
@@ -438,7 +445,7 @@ export default function MeasuresScreen() {
                     </View>
                   </View>
                 )}
-              </Card>
+              </GradientCard>
             )}
 
             {/* All measurements */}
@@ -528,12 +535,8 @@ const styles = StyleSheet.create({
   addBtn: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.accentGlow2,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: Colors.accentGlow,
   },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing['6xl'] },

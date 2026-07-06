@@ -103,6 +103,11 @@ export const Colors = {
   // Scrims / overlays
   scrim: 'rgba(0,0,0,0.6)',
   scrimStrong: 'rgba(0,0,0,0.78)',
+
+  // Tab bar (liquid glass)
+  tabBarTint: 'rgba(12,14,24,0.35)',   // frosted overlay layered on top of the iOS blur
+  tabBarSolid: 'rgba(18,20,30,0.94)',  // Android / no-blur fallback surface
+  tabBarActivePill: 'rgba(0,255,157,0.12)', // active-tab highlight behind the icon+label
 } as const;
 
 /**
@@ -289,4 +294,15 @@ export const Layout = {
   headerPaddingTop: Spacing.lg,
   sectionGap: Spacing.xl,
   minTapTarget: 44,
+} as const;
+
+/** Floating liquid-glass tab bar config. */
+export const TabBar = {
+  height: 72,          // ~30% taller to fit the larger icons + labels
+  gap: Spacing.sm,     // gap between the pill and the bottom safe-area edge
+  marginX: Spacing.lg, // left/right inset of the floating pill
+  blurIntensity: 40,   // iOS BlurView intensity
+  tint: 'dark' as const,
+  iconSize: 28,        // was 22 (~+30%)
+  labelSize: 13,       // was 10 (~+30%)
 } as const;
