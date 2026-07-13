@@ -70,6 +70,11 @@ Always import from `lib/theme.ts`. Never hardcode hex values.
 
 ## Recent changes
 ```
+- [v6.5] Repository Restructuring & Documentation Update:
+  - Migrated the Git repository to the root directory to establish a Monorepo containing both the Expo app (`SmartGym`) and the Web Admin Panel (`apps/admin`).
+  - Added a root-level `.gitignore` to prevent tracking metadata from local AI agents, IDE configurations, and environment secrets.
+  - Updated `SmartGym/README.md` to document feature sets from v6.0 to v6.4 (Icon migrations, 1RM modal UI, Tab bar updates, infinite loop fixes).
+  - Created a comprehensive `README.md` for `apps/admin` explaining the React 19 + TypeScript + Vite 8 stack and dynamic drag-and-drop routine builder features.
 - [v6.4] More Screen Icon Modernization & SVGs:
   - Converted the raw custom SVG assets to React Native Svg components in `components/ui/MoreIcons.tsx` using SVGR component patterns to avoid native parser exceptions on Fabric renderer.
   - Migrated the "More" tab settings options from raw text emojis to premium vector SVG components.
