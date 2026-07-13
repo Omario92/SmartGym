@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" version="1.1" id="svg852" width="682.66669" height="682.66669" viewBox="0 0 682.66669 682.66669">
+  <defs id="defs856">
+    <clipPath clipPathUnits="userSpaceOnUse" id="clipPath866">
+      <path d="M 0,512 H 512 V 0 H 0 Z" id="path864"/>
+    </clipPath>
+  </defs>
+  <mask id="custom"><rect id="bg" x="0" y="0" width="100%" height="100%" fill="white"/><g transform="matrix(1.3333333,0,0,-1.3333333,0,682.66667)"/></mask><g mask="url(#custom)"><g id="g858" transform="matrix(1.3333333,0,0,-1.3333333,0,682.66667)">
+    <g id="g860">
+      <g id="g862" clip-path="url(#clipPath866)">
+        <path d="M 497,215 H 15 V 15 h 482 z" style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1" id="path868"/>
+        <g id="g870" transform="translate(386,497)">
+          <path d="m 0,0 h -280 c -22.091,0 -40,-17.909 -40,-40 V -282 H 0 Z" style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1" id="path872"/>
+        </g>
+        <path d="M 326,437 H 186 v -80 h 140 z" style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1" id="path874"/>
+        <path d="M 446,457 H 386 V 215 h 60 z" style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1" id="path876"/>
+        <g id="g878" transform="translate(126,497)">
+          <path d="M 0,0 V -282" style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1" id="path880"/>
+        </g>
+        <g id="g882" transform="translate(336,215)">
+          <path d="m 0,0 h -160 l 30,-60 h 100 z" style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1" id="path884"/>
+        </g>
+      </g>
+    </g>
+  </g></g>
+</svg>

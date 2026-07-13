@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" version="1.1" id="svg1119" width="682.66669" height="682.66669" viewBox="0 0 682.66669 682.66669">
+  <defs id="defs1123">
+    <clipPath clipPathUnits="userSpaceOnUse" id="clipPath1133">
+      <path d="M 0,512 H 512 V 0 H 0 Z" id="path1131"/>
+    </clipPath>
+  </defs>
+  <mask id="custom"><rect id="bg" x="0" y="0" width="100%" height="100%" fill="white"/><g transform="matrix(1.3333333,0,0,-1.3333333,0,682.66667)"/></mask><g mask="url(#custom)"><g id="g1125" transform="matrix(1.3333333,0,0,-1.3333333,0,682.66667)">
+    <g id="g1127">
+      <g id="g1129" clip-path="url(#clipPath1133)">
+        <path d="M 497,16 H 15 v 60 h 482 z" style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1" id="path1135"/>
+        <g id="g1137" transform="translate(226,496)">
+          <path d="m 0,0 c 22.091,0 40,-17.909 40,-40 0,-22.091 -17.909,-40 -40,-40 -22.091,0 -40,17.909 -40,40 0,22.091 17.909,40 40,40 z" style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1" id="path1139"/>
+        </g>
+        <g id="g1141" transform="translate(186,276)">
+          <path d="m 0,0 h 80 v 80 h 100 c 16.569,0 30,13.431 30,30 0,16.569 -13.431,30 -30,30 H 40 C 17.909,140 0,122.091 0,100 Z" style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1" id="path1143"/>
+        </g>
+        <g id="g1145" transform="translate(266,246)">
+          <path d="m 0,0 v 30 h -80 v -40 c 0,-27.614 22.386,-50 50,-50 h 70 v -80 c 0,-16.569 13.431,-30 30,-30 16.569,0 30,13.431 30,30 V -40 C 100,-17.909 82.091,0 60,0 Z" style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1" id="path1147"/>
+        </g>
+        <g id="g1149" transform="translate(186,256)">
+          <path d="m 0,0 v -120 h -70 c -16.568,0 -30,-13.431 -30,-30 0,-16.569 13.432,-30 30,-30 h 90 c 22.091,0 40,17.909 40,40 v 70" style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1" id="path1151"/>
+        </g>
+      </g>
+    </g>
+  </g></g>
+</svg>

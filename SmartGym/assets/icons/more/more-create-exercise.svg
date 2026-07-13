@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" id="Capa_1" x="0px" y="0px" viewBox="0 0 512 512" style="enable-background:new 0 0 512 512;" xml:space="preserve" width="512" height="512">
+<g>
+	<path style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;" d="&#10;&#9;&#9;M222.277,416H126c-16.569,0-30-13.431-30-30V88"/>
+	<path style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;" d="&#10;&#9;&#9;M55.5,15H376c22.091,0,40,17.909,40,40v303.957"/>
+	<path style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;" d="&#10;&#9;&#9;M96,192H45c-16.569,0-30-13.431-30-30V55.5C15,33.132,33.132,15,55.5,15h0C77.868,15,96,33.132,96,55.5V192z"/>
+	<path style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;" d="&#10;&#9;&#9;M274,497h-20c-16.569,0-30-13.431-30-30V366c0-16.569,13.431-30,30-30h20c16.569,0,30,13.431,30,30v101&#10;&#9;&#9;C304,483.569,290.569,497,274,497z"/>
+	<path style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;" d="&#10;&#9;&#9;M467,497h-21c-16.569,0-30-13.431-30-30V366c0-16.569,13.431-30,30-30h21c16.569,0,30,13.431,30,30v101&#10;&#9;&#9;C497,483.569,483.569,497,467,497z"/>
+	
+		<rect x="304" y="384" style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;" width="112" height="64"/>
+	
+		<polyline style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;" points="&#10;&#9;&#9;160,104 184,128 224,88 &#9;"/>
+	
+		<line style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;" x1="272" y1="112" x2="352" y2="112"/>
+	
+		<polyline style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;" points="&#10;&#9;&#9;160,224 184,248 224,208 &#9;"/>
+	
+		<line style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;" x1="272" y1="232" x2="352" y2="232"/>
+</g>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</svg>

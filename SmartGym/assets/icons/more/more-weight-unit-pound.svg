@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   version="1.1"
+   id="svg2070"
+   xml:space="preserve"
+   width="682.66669"
+   height="682.66669"
+   viewBox="0 0 682.66669 682.66669"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"><defs
+     id="defs2074"><clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath2084"><path
+         d="M 0,512 H 512 V 0 H 0 Z"
+         id="path2082" /></clipPath></defs><g
+     id="g2076"
+     transform="matrix(1.3333333,0,0,-1.3333333,0,682.66667)"><g
+       id="g2078"><g
+         id="g2080"
+         clip-path="url(#clipPath2084)"><g
+           id="g2086"
+           transform="translate(316,437)"><path
+             d="m 0,0 c 0,-33.137 -26.863,-60 -60,-60 -33.137,0 -60,26.863 -60,60 0,33.137 26.863,60 60,60 C -26.863,60 0,33.137 0,0 Z"
+             style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
+             id="path2088" /></g><g
+           id="g2090"
+           transform="translate(225.2397,135.6426)"><path
+             d="M 0,0 H -60 V 120"
+             style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
+             id="path2092" /></g><g
+           id="g2094"
+           transform="translate(315.2402,195.6426)"><path
+             d="M 0,0 H -30 V 60 H 0 C 16.568,60 30,46.568 30,30 30,13.432 16.568,0 0,0 Z"
+             style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
+             id="path2096" /></g><g
+           id="g2098"
+           transform="translate(285.2402,195.6426)"><path
+             d="M 0,0 H 30 C 46.568,0 60,-13.432 60,-30 60,-46.568 46.568,-60 30,-60 H 0 Z"
+             style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
+             id="path2100" /></g><g
+           id="g2102"
+           transform="translate(136,377)"><path
+             d="m 0,0 h 240 c 13.567,0 25.031,-9.006 28.739,-21.366 l 91,-302 c 0.821,-2.735 1.261,-5.633 1.261,-8.634 0,-16.568 -13.432,-30 -30,-30 H -91 c -16.568,0 -30,13.432 -30,30 0,3.001 0.441,5.899 1.261,8.634 l 91,302 C -25.031,-9.006 -13.567,0 0,0 Z"
+             style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
+             id="path2104" /></g></g></g></g></svg>

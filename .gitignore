@@ -1,39 +1,22 @@
-node_modules/
-.expo/
-dist/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Expo
-.expo/
-dist/
-web-build/
-
-# Android build artifacts
-android/app/build/
-android/build/
-android/local.properties
-android/GeneratedPluginRegistrant.java
-
-# iOS build artifacts
-ios/Pods/
-ios/build/
-ios/DerivedData/
-ios/*.xcworkspace
-ios/*.pbxproj
-ios/GeneratedPluginRegistrant.h
-ios/GeneratedPluginRegistrant.m
-
-# System files
-.DS_Store
-expo-env.d.ts
-node_modules
-.env
+# Root ignore rules
+.antigravity/
 .vexp/
+.claude/
+.agents/
+.vscode/
 
-# Temp & Screenshot files
-tsconfig.tmp.json
-*.png
-lint-output.txt
+# Ignore node_modules & build folders at root or child levels
+**/node_modules/
+**/dist/
+**/.expo/
+**/.env
+**/.env.local
+**/.env.*.local
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/pnpm-debug.log*
 
+# OS files
+.DS_Store
+Thumbs.db
